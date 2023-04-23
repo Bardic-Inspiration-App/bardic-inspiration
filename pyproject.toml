@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "bardic-inspiration"
+version = "0.1.0"
+description = "D&D Discord App"
+authors = ["Lando <landonlewisturner@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "bardic_inspiration"}]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+python-dotenv = "^1.0.0"
+
+[tool.poetry.group.dev.dependencies]
+"discord.py" = "^2.2.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
