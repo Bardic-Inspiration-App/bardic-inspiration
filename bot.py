@@ -1,22 +1,38 @@
 import os
 import random
 
+import asyncio
 import discord
 import spotipy
+import spotipy.util as util
+
 
 from discord.ext import commands
 from dotenv import load_dotenv
 from spotipy.oauth2 import SpotifyClientCredentials
+
 
 load_dotenv()
 
 TOKEN = os.getenv('DISCORD_TOKEN')
 SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
 SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
+redirect_uri = os.getenv('SPOTIFY_REDIRECT_URI') #TODO: env me
+spotify_scope = 'user-library-read playlist-read-private user-modify-playback-state'
+# TODO: make this dynamic so that it still functions but doesn't need spotify login
+username = os.getenv('SPOTIFY_USERNAME')
+token = util.prompt_for_user_token(
+    username=username, 
+    scope=spotify_scope, 
+    client_id=SPOTIFY_CLIENT_ID, 
+    client_secret=SPOTIFY_CLIENT_SECRET, 
+    redirect_uri=redirect_uri
+    )
 
 bot = commands.Bot(command_prefix='!', intents=discord.Intents.all())
-sp = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials(SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET)
-)
+# sp = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials(SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET)
+# )
+sp = spotipy.Spotify(auth=token)
 
 
 @bot.event
@@ -28,26 +44,21 @@ async def on_ready():
         members = '\n - '.join([member.name for member in guild.members])
         print(f'Guild Members:\n - {members}')
 
-# TODO: implement command errors as the come up here
-# @bot.event
-# async def on_command_error(ctx, error):
-#     if isinstance(error, commands.errors.CheckFailure):
-#         await ctx.send('You do not have the correct role for this command.')
+@bot.event
+async def on_command_error(ctx, error):
+    # command invoke errors
+    if isinstance(error, commands.errors.CommandInvokeError):
+        if hasattr(error.original, 'reason') and error.original.reason == 'PREMIUM_REQUIRED':
+            await ctx.send('You do not have a premium Spotify account configured to run this command.\nRun: `!configure spotify`.')
 
-@bot.command(name='99', help='Responds with a random quote from Brooklyn 99')
-async def nine_nine(ctx):
-    print('I ran')
-    brooklyn_99_quotes = [
-        'I\'m the human form of the 💯 emoji.',
-        'Bingpot!',
-        (
-            'Cool. Cool cool cool cool cool cool cool, '
-            'no doubt no doubt no doubt no doubt.'
-        ),
-    ]
-
-    response = random.choice(brooklyn_99_quotes)
-    await ctx.send(response)
+# TODO: I am going to hardcode my username here at first
+## I would need a way to store the user authenticating in their respective guilds for this
+### would also need it to be the creator of the guild maybe?
+@bot.command(name='configure')
+async def configure(ctx, aspect: str):
+    if aspect.lower().strip() == 'spotify':
+        #FIXME: hard authing to POC but authing should be handled here
+        pass
 
 # TODO: turn this into a D&D specific roll function
 ## should take number of dice then the dX die string (use switch or something else)
@@ -61,17 +72,30 @@ async def roll(ctx, number_of_dice: int, number_of_sides: int):
 
 #TODO: Implement 'play' spotify playlist command (may need to figure out how to configure)
 @bot.command(name='play')
-async def play(ctx, playlist: str):
-    #FIXME: results in 403 because user needs to be premium
+async def play(ctx, name: str):
     # figure out who the 'user' is with my current creds
-    # see if I can configure/make a method that  makes the auth call (check chatgpt) to spotify
-    # the above should be it's own command probably
-    results = sp.search(q=playlist, type='playlist')
-    if len(results['playlists']['items']) > 0:
-        playlist_uri = results['playlists']['items'][0]['uri']
-        sp.start_playback(context_uri=playlist_uri)
-    else:
-        await ctx.send(f'No playlist found with the name {playlist}')
+    # TODO: with prem spotify I should be able to access any public playlist
+    ## SO, look at chatgpt for suggestion and refactor to have set args (combat, tense, etc)
+    ## use discord.py to stream into the voice channel
+    # TODO: change this so that it checks for prediscribed args
+    results = sp.search(q=name, type='playlist')
+    playlist = next((item for item in results['playlists']['items'] if item['owner']['display_name'] == 'Landon Turner'), None)
+    if not playlist:
+        print("Valid playlist not found for:", playlist)
+        return
+    # user_id = sp.me()['id']
+    # get the tracks from the playlist
+    tracks = sp.playlist_tracks(playlist.get('id'))
+    track_urls = [track['track']['preview_url'] for track in tracks['items'] if track['track']['preview_url']]
+    stream_url = track_urls[0] if track_urls else None
+
+    # if stream_url:
+    # join the voice channel
+    voice_channel = ctx.author.voice.channel
+    print(voice_channel)
+    voice_client = await voice_channel.connect()
+
+
 
 
 
