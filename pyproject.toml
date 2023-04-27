@@ -11,6 +11,7 @@ packages = [{include = "bardic_inspiration"}]
 python = "^3.9"
 python-dotenv = "^1.0.0"
 spotipy = "^2.23.0"
+discord-py = {extras = ["voice"], version = "^2.2.2"}
 
 [tool.poetry.group.dev.dependencies]
 "discord.py" = "^2.2.2"

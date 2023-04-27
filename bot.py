@@ -78,7 +78,11 @@ async def play(ctx, name: str):
     ## SO, look at chatgpt for suggestion and refactor to have set args (combat, tense, etc)
     ## use discord.py to stream into the voice channel
     # TODO: change this so that it checks for prediscribed args
-    results = sp.search(q=name, type='playlist')
+    playlist_key = {
+        "combat": "bardic-inspiration:combat"
+    }
+    query= playlist_key.get(name)
+    results = sp.search(q=query, type='playlist')
     playlist = next((item for item in results['playlists']['items'] if item['owner']['display_name'] == 'Landon Turner'), None)
     if not playlist:
         print("Valid playlist not found for:", playlist)
@@ -89,13 +93,28 @@ async def play(ctx, name: str):
     track_urls = [track['track']['preview_url'] for track in tracks['items'] if track['track']['preview_url']]
     stream_url = track_urls[0] if track_urls else None
 
-    # if stream_url:
     # join the voice channel
     voice_channel = ctx.author.voice.channel
-    print(voice_channel)
     voice_client = await voice_channel.connect()
+    print(stream_url)
 
+    if stream_url:
+        print('yeah i did the thing')
+        process = (
+            discord.FFmpegPCMAudio(stream_url)
+            .output(voice_client, format='s16le', acodec='pcm_s16le', ac=2, ar='48k')
+            .overwrite_output()
+            .run_async()
+        )
+        print('Streaming started')
+    else:
+        print('No stream URL found for the playlist')
 
+    # Wait for the stream to finish before disconnecting
+    while not process.done():
+        await asyncio.sleep(1)
+    print('disconnecting')
+    await voice_channel.disconnect()
 
 
 
