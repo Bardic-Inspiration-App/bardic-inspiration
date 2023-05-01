@@ -8,10 +8,12 @@ readme = "README.md"
 packages = [{include = "bardic_inspiration"}]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.10"
 python-dotenv = "^1.0.0"
 spotipy = "^2.23.0"
 discord-py = {extras = ["voice"], version = "^2.2.2"}
+wavelink = "^2.1.0"
+lavalink = "^4.0.6"
 
 [tool.poetry.group.dev.dependencies]
 "discord.py" = "^2.2.2"

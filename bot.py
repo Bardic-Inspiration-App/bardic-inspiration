@@ -5,6 +5,7 @@ import asyncio
 import discord
 import spotipy
 import spotipy.util as util
+import wavelink
 
 
 from discord.ext import commands
@@ -14,11 +15,15 @@ from spotipy.oauth2 import SpotifyClientCredentials
 
 load_dotenv()
 
+# Global Variables
 TOKEN = os.getenv('DISCORD_TOKEN')
 SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
 SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
 redirect_uri = os.getenv('SPOTIFY_REDIRECT_URI') #TODO: env me
 spotify_scope = 'user-library-read playlist-read-private user-modify-playback-state'
+WAVELINK_HOST = os.getenv('WAVELINK_HOST')
+WAVELINK_PORT = os.getenv('WAVELINK_PORT')
+WAVELINK_PASSWORD = os.getenv('WAVELINK_PASSWORD')
 # TODO: make this dynamic so that it still functions but doesn't need spotify login
 username = os.getenv('SPOTIFY_USERNAME')
 token = util.prompt_for_user_token(
@@ -29,11 +34,32 @@ token = util.prompt_for_user_token(
     redirect_uri=redirect_uri
     )
 
+# Clients
 bot = commands.Bot(command_prefix='!', intents=discord.Intents.all())
 # sp = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials(SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET)
 # )
 sp = spotipy.Spotify(auth=token)
 
+async def node_connect():
+    """Connects bot to the wavelink server"""
+    # TODO: plug in wavelink values for host, port and password (use https one)
+    ### looks like I can create as many nodes as possible?
+    #### perhaps I can host my own and just use that as a node? idk
+    print('Starting Node connect')
+    await bot.wait_until_ready()
+    try:
+        node: wavelink.Node = wavelink.Node(
+            uri='http://162.243.160.15:2333',
+            password='countryroadstakemehome',
+        )
+        await wavelink.NodePool.connect(client=bot, nodes=[node])
+    except Exception as e:
+        print(f'Connection failed due to: {e}')
+        pass
+
+@bot.event
+async def on_wavelink_node_ready(node: wavelink.Node):
+    print(f'Node {node.id} is ready')
 
 @bot.event
 async def on_ready():
@@ -43,6 +69,24 @@ async def on_ready():
         print(f'{guild}(id: {guild.id})')
         members = '\n - '.join([member.name for member in guild.members])
         print(f'Guild Members:\n - {members}')
+    print('Connecting to Wavelink server...')
+    try:
+        bot.loop.create_task(node_connect())
+    except Exception as e:
+        print(f'Failed to connect to Wavelink server: {e}')
+
+# plays a video from youtube, intended for tutorial purposes, remove me if in repo
+@bot.command()
+async def yt(ctx: commands.Context):
+    # if not ctx.voice_client:
+    #     vc:wavelink.Player = await ctx.author.voice.channel.connect(cls=wavelink.Player)
+    # else:
+    #     vc: wavelink.Player = ctx.voice_client
+    # join the voice chat if not already there
+    vc: wavelink.Player = ctx.voice_client if ctx.voice_client else await ctx.author.voice.channel.connect(cls=wavelink.Player)
+    
+    vc.play('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+
 
 @bot.event
 async def on_command_error(ctx, error):
@@ -69,52 +113,6 @@ async def roll(ctx, number_of_dice: int, number_of_sides: int):
         for _ in range(number_of_dice)
     ]
     await ctx.send(', '.join(dice))
-
-#TODO: Implement 'play' spotify playlist command (may need to figure out how to configure)
-@bot.command(name='play')
-async def play(ctx, name: str):
-    # figure out who the 'user' is with my current creds
-    # TODO: with prem spotify I should be able to access any public playlist
-    ## SO, look at chatgpt for suggestion and refactor to have set args (combat, tense, etc)
-    ## use discord.py to stream into the voice channel
-    # TODO: change this so that it checks for prediscribed args
-    playlist_key = {
-        "combat": "bardic-inspiration:combat"
-    }
-    query= playlist_key.get(name)
-    results = sp.search(q=query, type='playlist')
-    playlist = next((item for item in results['playlists']['items'] if item['owner']['display_name'] == 'Landon Turner'), None)
-    if not playlist:
-        print("Valid playlist not found for:", playlist)
-        return
-    # user_id = sp.me()['id']
-    # get the tracks from the playlist
-    tracks = sp.playlist_tracks(playlist.get('id'))
-    track_urls = [track['track']['preview_url'] for track in tracks['items'] if track['track']['preview_url']]
-    stream_url = track_urls[0] if track_urls else None
-
-    # join the voice channel
-    voice_channel = ctx.author.voice.channel
-    voice_client = await voice_channel.connect()
-    print(stream_url)
-
-    if stream_url:
-        print('yeah i did the thing')
-        process = (
-            discord.FFmpegPCMAudio(stream_url)
-            .output(voice_client, format='s16le', acodec='pcm_s16le', ac=2, ar='48k')
-            .overwrite_output()
-            .run_async()
-        )
-        print('Streaming started')
-    else:
-        print('No stream URL found for the playlist')
-
-    # Wait for the stream to finish before disconnecting
-    while not process.done():
-        await asyncio.sleep(1)
-    print('disconnecting')
-    await voice_channel.disconnect()
 
 
 
