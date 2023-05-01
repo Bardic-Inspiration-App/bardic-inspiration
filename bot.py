@@ -21,10 +21,9 @@ SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
 SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
 redirect_uri = os.getenv('SPOTIFY_REDIRECT_URI') #TODO: env me
 spotify_scope = 'user-library-read playlist-read-private user-modify-playback-state'
-WAVELINK_HOST = os.getenv('WAVELINK_HOST')
-WAVELINK_PORT = os.getenv('WAVELINK_PORT')
+WAVELINK_URI = os.getenv('WAVELINK_URI')
 WAVELINK_PASSWORD = os.getenv('WAVELINK_PASSWORD')
-# TODO: make this dynamic so that it still functions but doesn't need spotify login
+# TODO: make this dynamic so that it still functions but doesn't need spotify login <- I think I will require spotify premium to protect my aims here
 username = os.getenv('SPOTIFY_USERNAME')
 token = util.prompt_for_user_token(
     username=username, 
@@ -42,15 +41,12 @@ sp = spotipy.Spotify(auth=token)
 
 async def node_connect():
     """Connects bot to the wavelink server"""
-    # TODO: plug in wavelink values for host, port and password (use https one)
-    ### looks like I can create as many nodes as possible?
-    #### perhaps I can host my own and just use that as a node? idk
     print('Starting Node connect')
     await bot.wait_until_ready()
     try:
         node: wavelink.Node = wavelink.Node(
-            uri='http://162.243.160.15:2333',
-            password='countryroadstakemehome',
+            uri=WAVELINK_URI,
+            password=WAVELINK_PASSWORD,
         )
         await wavelink.NodePool.connect(client=bot, nodes=[node])
     except Exception as e:
