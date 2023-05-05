@@ -48,7 +48,7 @@ async def node_connect():
             uri=WAVELINK_URI,
             password=WAVELINK_PASSWORD,
         )
-        await wavelink.NodePool.connect(client=bot, nodes=[node])
+        await wavelink.NodePool.connect(client=bot, nodes=[node], spotify=sp)
     except Exception as e:
         print(f'Connection failed due to: {e}')
         pass
@@ -66,6 +66,7 @@ async def on_ready():
         members = '\n - '.join([member.name for member in guild.members])
         print(f'Guild Members:\n - {members}')
     print('Connecting to Wavelink server...')
+    # TODO: when making this past POC, have it check if the user has configured spotify and prompt to if not
     try:
         bot.loop.create_task(node_connect())
     except Exception as e:
@@ -81,7 +82,7 @@ async def yt(ctx: commands.Context):
     # join the voice chat if not already there
     vc: wavelink.Player = ctx.voice_client if ctx.voice_client else await ctx.author.voice.channel.connect(cls=wavelink.Player)
     
-    vc.play('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+    await vc.play('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
 
 
 @bot.event
@@ -96,6 +97,7 @@ async def on_command_error(ctx, error):
 ### would also need it to be the creator of the guild maybe?
 @bot.command(name='configure')
 async def configure(ctx, aspect: str):
+    # TODO: use python switch since we have 3.10
     if aspect.lower().strip() == 'spotify':
         #FIXME: hard authing to POC but authing should be handled here
         pass
@@ -110,6 +112,9 @@ async def roll(ctx, number_of_dice: int, number_of_sides: int):
     ]
     await ctx.send(', '.join(dice))
 
+@bot.command(name='play')
+async def play(ctx, query: str):
+    vc: wavelink.Player = ctx.voice_client if ctx.voice_client else await ctx.author.voice.channel.connect(cls=wavelink.Player)
 
 
 bot.run(TOKEN)
