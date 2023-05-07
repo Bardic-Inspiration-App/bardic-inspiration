@@ -1,5 +1,6 @@
 import os
 import random
+import traceback
 
 import discord
 import spotipy
@@ -7,7 +8,7 @@ import spotipy.util as util
 import wavelink
 
 
-from discord.ext import commands
+from discord.ext import commands, tasks
 from dotenv import load_dotenv
 from wavelink.ext import spotify
 
@@ -63,15 +64,12 @@ class BardBot(commands.Bot):
                 password=WAVELINK_PASSWORD,
             )
             await wavelink.NodePool.connect(client=bot, nodes=[node], spotify=sp_wavelink)
-            print(sp_wavelink)
 
         except Exception as e:
             print(f'Connection failed due to: {e}')
             pass
 # Clients
-# bot = commands.Bot(command_prefix='!', intents=discord.Intents.all())
 bot = BardBot()
-
 
 @bot.event
 async def on_command_error(ctx, error):
@@ -80,9 +78,6 @@ async def on_command_error(ctx, error):
         if hasattr(error.original, 'reason') and error.original.reason == 'PREMIUM_REQUIRED':
             await ctx.send('You do not have a premium Spotify account configured to run this command.\nRun: `!configure spotify`.')
 
-# TODO: I am going to hardcode my username here at first
-## I would need a way to store the user authenticating in their respective guilds for this
-### would also need it to be the creator of the guild maybe?
 @bot.command(name='configure')
 async def configure(ctx, aspect: str):
     # TODO: use python switch since we have 3.10
@@ -101,35 +96,76 @@ async def roll(ctx, number_of_dice: int, number_of_sides: int):
     await ctx.send(', '.join(dice))
 
 @bot.command(name='play')
-async def play(ctx: commands.context, query: str):
+async def play(ctx: commands.Context, query: str):
     if not getattr(ctx.author.voice, "channel", None):
         ctx.send('Sorry, I can only play in voice channels!')
-    custom_player = CustomPlayer()
+    # TODO: Use custom player to have separate queues youtube.com/watch?v=mRzv6Zcowz0 for reference
     vc: wavelink.Player = ctx.voice_client if ctx.voice_client else await ctx.author.voice.channel.connect(cls=wavelink.Player)
+    search = None
+    match query:
+        case 'combat':
+            search = 'https://www.youtube.com/playlist?list=PLWTLBYs2T-4lEgF-mfibdsNAM_5KP8vGe'
+        case _:
+            await ctx.send(f'Sorry, I could not play your request of "{query}"\nI can play the following commands:\n`combat`')
+            return
+    playlist = await wavelink.YouTubePlaylist.search(search)
     try:
-        results = sp.search(q='bardic-inspiration:combat', type='playlist')
-        playlist = next((p for p in results['playlists']['items'] if p['owner']['display_name'] == 'Landon Turner'))
-        tracks = sp.playlist_tracks(playlist_id=playlist.get('id'), fields='items',additional_types=('track',))
-        print(tracks['items'][0]['track']['external_urls']['spotify'])
-        track_url = tracks['items'][0]['track']['external_urls']['spotify']
-        decoded = spotify.decode_url(track_url)
-        print(decoded)
-
+        # TODO: Make jumble the track list so that it starts with a new song each time
+        # TODO: cut volume down by half, It's drowningly loud
         vc.autoplay = True
-        print('kosher')
-        track = await spotify.SpotifyTrack.search(track_url)
+        for track in playlist.tracks:
+            if vc.queue.is_empty and not vc.is_playing():
+                await vc.play(track, populate=True)
+                await ctx.send(f'Playing `{track.title}`')
+            else:
+                await vc.queue.put_wait(track)
+
+        # TODO: add case if playlist runs out of songs
     except Exception as e:
-        print(e)
+        print('damn', e)
+        print(traceback.print_exc())
+        return await ctx.send("Apologies, something unforseen has gone wrong.")
+
+
+# The below is not implemented and proven difficult to work with in current versions, hopeful to be revisited
+@bot.command(name='splay')
+async def splay(ctx: commands.Context, query: str):
+    """Play type of playlist from Spotify"""
+    if not getattr(ctx.author.voice, "channel", None):
+        ctx.send('Sorry, I can only play in voice channels!')
+    vc: wavelink.Player = ctx.voice_client if ctx.voice_client else await ctx.author.voice.channel.connect(cls=wavelink.Player)
+    results = sp.search(q='bardic-inspiration:combat', type='playlist')
+    playlist = next((p for p in results['playlists']['items'] if p['owner']['display_name'] == 'Landon Turner'))
+    tracks = sp.playlist_tracks(playlist_id=playlist.get('id'), fields='items',additional_types=('track',))
+    # print(tracks['items'][0]['track']['external_urls']['spotify'])
+    track_url = tracks['items'][0]['track']['external_urls']['spotify']
+    decoded = spotify.decode_url(track_url)
+    if not decoded or decoded['type'] is not spotify.SpotifySearchType.track:
+        await ctx.send('Sorry, I had an issue finding the lyrics to a song.')
+        return
+    try:
+        vc.autoplay = True
+        track = find_track(track_url)
+        # track = await spotify.SpotifyTrack.search(track_url)
+        if vc.queue.is_empty and not vc.is_playing():
+            print('evry ting ire')
+            await vc.play(track, populate=True)
+            print('everyting still ire')
+            await ctx.send(f'Playing `{tracks.title}`')
+        else:
+            await vc.queue.put_wait(track)
+    except Exception as e:
+        print('damn', e)
+        print(traceback.print_exc())
+       
         return await ctx.send("oops")
 
-    if vc.queue.is_empty and not vc.is_playing():
-        print('evry ting ire')
-        await vc.play(track, populate=True)
-        print('everyting still ire')
-        await ctx.send(f'Playing `{tracks.title}`')
-
-    else:
-        await vc.queue.put_wait(track)
+# @tasks.loop(seconds=5)
+async def find_track(query):
+    """Finds the track using the wavelink Spotify extensions. Has to run in it's own async function."""
+    track = await spotify.SpotifyTrack.search(query)
+    print('track', track)
+    return track
 
 
 bot.run(TOKEN)
