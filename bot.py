@@ -8,7 +8,7 @@ import spotipy.util as util
 import wavelink
 
 
-from discord.ext import commands, tasks
+from discord.ext import commands
 from dotenv import load_dotenv
 from wavelink.ext import spotify
 
@@ -99,14 +99,18 @@ async def roll(ctx, number_of_dice: int, number_of_sides: int):
 async def play(ctx: commands.Context, query: str):
     if not getattr(ctx.author.voice, "channel", None):
         ctx.send('Sorry, I can only play in voice channels!')
-    # TODO: Use custom player to have separate queues youtube.com/watch?v=mRzv6Zcowz0 for reference
+    # TODO: Use custom player to have separate queues youtube.com/watch?v=mRzv6Zcowz0 for reference <- must be done before published
     vc: wavelink.Player = ctx.voice_client if ctx.voice_client else await ctx.author.voice.channel.connect(cls=wavelink.Player)
     search = None
     match query:
         case 'combat':
-            search = 'https://www.youtube.com/playlist?list=PLWTLBYs2T-4lEgF-mfibdsNAM_5KP8vGe'
+            search = 'https://www.youtube.com/playlist?list=PLMK9kbhhnbp0At0z5aiNmjyBoL9Vvj_G1'
+        case 'tense':
+            search = 'https://www.youtube.com/playlist?list=PLMK9kbhhnbp2VI5evDa_Lpqff5hwL7vg5'
+        case 'explore':
+            search = 'https://www.youtube.com/playlist?list=PLMK9kbhhnbp10P0s0EkmWzFenouJe-04b'
         case _:
-            await ctx.send(f'Sorry, I could not play your request of "{query}"\nI can play the following commands:\n`combat`')
+            await ctx.send(f'Sorry, I could not play your request of "{query}"\nI can play the following commands:\n`- combat`\n`- tense`\n`- explore`')
             return
     playlist = await wavelink.YouTubePlaylist.search(search)
     try:
@@ -115,7 +119,7 @@ async def play(ctx: commands.Context, query: str):
         vc.autoplay = True
         for track in playlist.tracks:
             if vc.queue.is_empty and not vc.is_playing():
-                await vc.play(track, populate=True)
+                await vc.play(track, populate=True, volume=10) #test volume
                 await ctx.send(f'Playing `{track.title}`')
             else:
                 await vc.queue.put_wait(track)
