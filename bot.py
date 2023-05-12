@@ -1,16 +1,15 @@
 import os
-import random
 import traceback
 
 import discord
 import spotipy
 import spotipy.util as util
 import wavelink
-
-
 from discord.ext import commands
 from dotenv import load_dotenv
 from wavelink.ext import spotify
+
+from utils.util import shuffle_list, roll_dice
 
 load_dotenv()
 
@@ -88,12 +87,10 @@ async def configure(ctx, aspect: str):
 # TODO: turn this into a D&D specific roll function
 ## should take number of dice then the dX die string (use switch or something else)
 @bot.command(name='roll')
-async def roll(ctx, number_of_dice: int, number_of_sides: int):
-    dice = [
-        str(random.choice(range(1, number_of_sides + 1)))
-        for _ in range(number_of_dice)
-    ]
-    await ctx.send(', '.join(dice))
+async def roll(ctx, dice_string: str):
+    number, sides = dice_string.split('d')
+    result = roll_dice(number, sides)
+    await ctx.send(result)
 
 @bot.command(name='play')
 async def play(ctx: commands.Context, query: str):
@@ -105,6 +102,8 @@ async def play(ctx: commands.Context, query: str):
         search = None
         # set a standard that plays at a backgroung level. default volume is aggressive
         await vc.set_volume(5)
+
+        # TODO: if play is run again and it is playing have it pause and switch to the other playlist
         
         # command always starts with a clean playlist queue
         # vc.queue = wavelink.Queue()
@@ -120,16 +119,16 @@ async def play(ctx: commands.Context, query: str):
                 await ctx.send(f'Sorry, I could not play your request of "{query}"\nI can play the following commands:\n`- combat`\n`- tense`\n`- explore`')
                 return
         playlist = await wavelink.YouTubePlaylist.search(search)
-        # TODO: Make jumble the track list so that it starts with a new song each time
+        shuffled_tracks = shuffle_list(playlist.tracks.copy())
         vc.autoplay = True
-        for track in playlist.tracks:
+        for track in shuffled_tracks:
             if vc.queue.is_empty and not vc.is_playing():
-                await vc.play(track, populate=True) #test volume
-                await ctx.send(f'Playing `{track.title}`')
+                await vc.play(track, populate=True) 
+                await ctx.send(f'Playing `{query}`')
             else:
                 await vc.queue.put_wait(track)
 
-        # TODO: add case if playlist runs out of songs
+        # TODO: add case if playlist runs out of songs?
     except Exception as e:
         print('damn', e)
         print(traceback.print_exc())
