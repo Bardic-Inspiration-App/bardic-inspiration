@@ -104,7 +104,8 @@ async def play(ctx: commands.Context, query: str):
         await vc.set_volume(5)
 
         # TODO: if play is run again and it is playing have it pause and switch to the other playlist
-        
+        await vc.stop()
+        vc.queue = wavelink.Queue()
         # command always starts with a clean playlist queue
         # vc.queue = wavelink.Queue()
         # TODO: see if we will need to pause/stop as well so that the most recent play command always overrides the last 
