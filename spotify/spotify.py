@@ -1,3 +1,27 @@
+import os
+
+import spotipy
+import spotipy.util as util
+from wavelink.ext import spotify
+
+SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
+SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
+redirect_uri = os.getenv('SPOTIFY_REDIRECT_URI') 
+spotify_scope = 'user-library-read playlist-read-private user-modify-playback-state'
+
+username = os.getenv('SPOTIFY_USERNAME')
+token = util.prompt_for_user_token(
+    username=username, 
+    scope=spotify_scope, 
+    client_id=SPOTIFY_CLIENT_ID, 
+    client_secret=SPOTIFY_CLIENT_SECRET, 
+    redirect_uri=redirect_uri
+    )
+
+sp = spotipy.Spotify(auth=token)
+sp_wavelink = spotify.SpotifyClient(client_id=SPOTIFY_CLIENT_ID, client_secret=SPOTIFY_CLIENT_SECRET)
+
+
 # The below is not implemented and proven difficult to work with in current versions, hopeful to be revisited
 # @bot.command(name='splay')
 # async def splay(ctx: commands.Context, query: str):

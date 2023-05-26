@@ -2,12 +2,9 @@ import os
 import traceback
 
 import discord
-import spotipy
-import spotipy.util as util
 import wavelink
 from discord.ext import commands
 from dotenv import load_dotenv
-from wavelink.ext import spotify
 
 from utils.util import shuffle_list, roll_dice
 
@@ -15,30 +12,14 @@ load_dotenv()
 
 # Global Variables
 TOKEN = os.getenv('DISCORD_TOKEN')
-SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
-SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
-redirect_uri = os.getenv('SPOTIFY_REDIRECT_URI') 
-spotify_scope = 'user-library-read playlist-read-private user-modify-playback-state'
+
 WAVELINK_URI = os.getenv('WAVELINK_URI')
 WAVELINK_PASSWORD = os.getenv('WAVELINK_PASSWORD')
-
-username = os.getenv('SPOTIFY_USERNAME')
-token = util.prompt_for_user_token(
-    username=username, 
-    scope=spotify_scope, 
-    client_id=SPOTIFY_CLIENT_ID, 
-    client_secret=SPOTIFY_CLIENT_SECRET, 
-    redirect_uri=redirect_uri
-    )
-
-sp = spotipy.Spotify(auth=token)
-sp_wavelink = spotify.SpotifyClient(client_id=SPOTIFY_CLIENT_ID, client_secret=SPOTIFY_CLIENT_SECRET)
 
 class CustomPlayer(wavelink.Player):
     def __init__(self):
         super().__init__()
         self.queue = wavelink.Queue()
-        # TODO: use this to implement after poc for other users 
 
 class BardBot(commands.Bot):
     def __init__(self) -> None:
