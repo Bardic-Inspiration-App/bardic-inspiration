@@ -103,12 +103,10 @@ async def play(ctx: commands.Context, query: str):
         # set a standard that plays at a backgroung level. default volume is aggressive
         await vc.set_volume(5)
 
-        # TODO: if play is run again and it is playing have it pause and switch to the other playlist
+        # if play is run again and it is playing have it stop and switch to the other playlist
         await vc.stop()
         vc.queue = wavelink.Queue()
-        # command always starts with a clean playlist queue
-        # vc.queue = wavelink.Queue()
-        # TODO: see if we will need to pause/stop as well so that the most recent play command always overrides the last 
+
         match query:
             case 'combat':
                 search = 'https://www.youtube.com/playlist?list=PLMK9kbhhnbp0At0z5aiNmjyBoL9Vvj_G1'
@@ -129,12 +127,12 @@ async def play(ctx: commands.Context, query: str):
             else:
                 await vc.queue.put_wait(track)
 
-        # TODO: add case if playlist runs out of songs?
     except Exception as e:
         print('damn', e)
         print(traceback.print_exc())
         return await ctx.send("Apologies, something unforseen has gone wrong.")
 
+# TODO: Must add disconnect command!
 
 # The below is not implemented and proven difficult to work with in current versions, hopeful to be revisited
 @bot.command(name='splay')
