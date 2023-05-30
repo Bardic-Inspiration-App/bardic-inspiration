@@ -70,26 +70,11 @@ async def play(ctx: commands.Context, query: str):
     # TODO: Use custom player to have separate queues youtube.com/watch?v=mRzv6Zcowz0 for reference <- must be done before published (Beta)
     try:
         vc: wavelink.Player = ctx.voice_client if ctx.voice_client else await ctx.author.voice.channel.connect(cls=wavelink.Player)
-        search = None
         # set a standard that plays at a backgroung level. default volume is aggressive
         await vc.set_volume(5)
-
         # if play is run again and it is playing have it stop and reset
         await vc.stop()
         vc.queue = wavelink.Queue()
-
-        # # TODO: create a function that returns a playlist from this switch statement
-        # match query:
-        #     case 'combat':
-        #         search = 'https://www.youtube.com/playlist?list=PLMK9kbhhnbp0At0z5aiNmjyBoL9Vvj_G1'
-        #     case 'tense':
-        #         search = 'https://www.youtube.com/playlist?list=PLMK9kbhhnbp2VI5evDa_Lpqff5hwL7vg5'
-        #     case 'explore':
-        #         search = 'https://www.youtube.com/playlist?list=PLMK9kbhhnbp10P0s0EkmWzFenouJe-04b'
-        #     case _:
-        #         await ctx.send(f'Sorry, I could not play your request of "{query}"\nI can play the following commands:\n`- combat`\n`- tense`\n`- explore`')
-        #         return
-        # TODO: test this
         url = get_playlist_url(query)
         if not url:
             await ctx.send(f'Sorry, I could not play your request of "{query}"\nI can play the following commands:\n`- combat`\n`- tense`\n`- explore`')
@@ -109,4 +94,19 @@ async def play(ctx: commands.Context, query: str):
         print(traceback.print_exc())
         return await ctx.send("Apologies, something unforseen has gone wrong.")
 
+@bot.command(name='stop')
+async def stop(ctx: commands.Context):
+    if not getattr(ctx.author.voice, "channel", None):
+        ctx.send('Sorry, I can only stop in voice channels!')
+        return
+    try:
+        vc: wavelink.Player = ctx.voice_client if ctx.voice_client else None
+        if vc:
+            await vc.stop()
+            vc.queue = wavelink.Queue()
+    except Exception as e:
+        print('damn', e)
+        print(traceback.print_exc())
+        return await ctx.send("Apologies, something unforseen has gone wrong.")
+    
 bot.run(TOKEN)
