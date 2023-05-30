@@ -104,6 +104,7 @@ async def stop(ctx: commands.Context):
         if vc:
             await vc.stop()
             vc.queue = wavelink.Queue()
+            await vc.disconnect()
     except Exception as e:
         print('damn', e)
         print(traceback.print_exc())
