@@ -68,6 +68,7 @@ async def play(ctx: commands.Context, query: str):
     if not getattr(ctx.author.voice, "channel", None):
         ctx.send('Sorry, I can only play in voice channels!')
     # TODO: Use custom player to have separate queues youtube.com/watch?v=mRzv6Zcowz0 for reference <- must be done before published (Beta)
+    # yeet
     try:
         vc: wavelink.Player = ctx.voice_client if ctx.voice_client else await ctx.author.voice.channel.connect(cls=wavelink.Player)
         # set a standard that plays at a backgroung level. default volume is aggressive
