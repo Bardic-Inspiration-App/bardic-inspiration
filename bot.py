@@ -42,7 +42,7 @@ class BardBot(commands.Bot):
                 uri=WAVELINK_URI,
                 password=WAVELINK_PASSWORD,
             )
-            await wavelink.NodePool.connect(client=bot, nodes=[node], spotify=sp_wavelink)
+            await wavelink.NodePool.connect(client=bot, nodes=[node])
 
         except Exception as e:
             print(f'Connection failed due to: {e}')
