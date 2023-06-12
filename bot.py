@@ -118,8 +118,6 @@ async def volume(ctx: commands.Context, command: str):
             await ctx.send('Sorry, I can only adjust volume if I\'m connected in a voice channel!')
             return
         current_volume = vc.volume
-        print(current_volume)
-        print(command)
         match command:
             case 'up':
                 if current_volume <= MAX_VOLUME:
