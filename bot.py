@@ -5,15 +5,15 @@ import discord
 import wavelink
 from discord.ext import commands
 from dotenv import load_dotenv
-from utils.util import get_playlist_url, roll_dice, shuffle_list
+from utils.util import get_playlist_url, return_play_commands, roll_dice, shuffle_list
 
 load_dotenv()
 
 # Global Variables
 TOKEN = os.getenv('DISCORD_TOKEN')
-
 WAVELINK_URI = os.getenv('WAVELINK_URI')
 WAVELINK_PASSWORD = os.getenv('WAVELINK_PASSWORD')
+MAX_VOLUME = 5
 
 class CustomPlayer(wavelink.Player):
     def __init__(self):
@@ -68,17 +68,16 @@ async def play(ctx: commands.Context, query: str):
     if not getattr(ctx.author.voice, "channel", None):
         ctx.send('Sorry, I can only play in voice channels!')
     # TODO: Use custom player to have separate queues youtube.com/watch?v=mRzv6Zcowz0 for reference <- must be done before published (Beta)
-    # yeet
     try:
         vc: wavelink.Player = ctx.voice_client if ctx.voice_client else await ctx.author.voice.channel.connect(cls=wavelink.Player)
-        # set a standard that plays at a backgroung level. default volume is aggressive
-        await vc.set_volume(5)
+        # set a standard that plays at a background level. default volume is aggressive
+        await vc.set_volume(3)
         # if play is run again and it is playing have it stop and reset
         await vc.stop()
         vc.queue = wavelink.Queue()
         url = get_playlist_url(query)
         if not url:
-            await ctx.send(f'Sorry, I could not play your request of "{query}"\nI can play the following commands:\n`- combat`\n`- tense`\n`- explore`')
+            await ctx.send(f'Sorry, I could not play your request of "{query}"\nI can play the following commands:{return_play_commands()}')
             return
         playlist = await wavelink.YouTubePlaylist.search(url)
         shuffled_tracks = shuffle_list(playlist.tracks.copy())
@@ -106,6 +105,33 @@ async def stop(ctx: commands.Context):
             await vc.stop()
             vc.queue = wavelink.Queue()
             await vc.disconnect()
+    except Exception as e:
+        print('damn', e)
+        print(traceback.print_exc())
+        return await ctx.send("Apologies, something unforseen has gone wrong.")
+
+@bot.command(name='volume')
+async def volume(ctx: commands.Context, command: str):   
+    try:
+        vc: wavelink.Player = ctx.voice_client if ctx.voice_client else None
+        if not getattr(ctx.author.voice, "channel", None) or not vc:
+            await ctx.send('Sorry, I can only adjust volume if I\'m connected in a voice channel!')
+            return
+        current_volume = vc.volume
+        match command:
+            case 'up':
+                if current_volume <= MAX_VOLUME:
+                    await vc.set_volume(current_volume + 1)
+            case 'down':
+                if current_volume > 0:
+                    await vc.set_volume(current_volume - 1)
+            case 'max':
+                await vc.set_volume(MAX_VOLUME)
+            case 'mute':
+                await vc.set_volume(0)
+            case _:
+                await ctx.send(f"I couldn\'t adjust the volume with command: `{command}`. Try these:\n- `up`\n- `down`\n- `max`\n- `mute` ")
+        
     except Exception as e:
         print('damn', e)
         print(traceback.print_exc())
