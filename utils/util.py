@@ -46,3 +46,7 @@ def get_playlist_url(query: str) -> str:
 def return_play_commands() -> str:
     playlists = ['combat', 'tense', 'explore', 'seas', 'city', 'tavern', 'infernal', 'forest', 'jungle']
     return " ".join([f"\n- `{command}`" for command in playlists])
+
+
+def generate_ai_prompt(content: list[str]):
+    return "Convert these tabletop rpg notes into a readable story summary.\n\n" + ", ".join(content)

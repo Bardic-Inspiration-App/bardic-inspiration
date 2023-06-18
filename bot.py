@@ -2,14 +2,16 @@ import os
 import traceback
 
 import discord
+import openai
 import wavelink
 from discord.ext import commands
 from dotenv import load_dotenv
-from utils.util import get_playlist_url, return_play_commands, roll_dice, shuffle_list
+from utils.util import get_playlist_url, return_play_commands, roll_dice, shuffle_list, generate_ai_prompt
 
 load_dotenv()
 
 # Global Variables
+openai.api_key = os.getenv("OPENAI_API_KEY")
 TOKEN = os.getenv('DISCORD_TOKEN')
 WAVELINK_URI = os.getenv('WAVELINK_URI')
 WAVELINK_PASSWORD = os.getenv('WAVELINK_PASSWORD')
@@ -159,6 +161,7 @@ async def volume(ctx: commands.Context, command: str):
 @bot.command(name='scribe')
 async def scribe(ctx: commands.Context):
     '''Landon add a blurb about what this does'''
+    # TODO: for now, only have it scribe in text channels, speech to text is in beta for openai -> later iteration
     # If this channel isn't in our scribe cache, add it with desired default; treats it like it was off from here forward
     if not ctx.channel.id in bot.scribe_cache:
         bot.scribe_cache[ctx.channel.id] = {"on": False, "content": []}
@@ -171,11 +174,26 @@ async def scribe(ctx: commands.Context):
     elif channel_content:   
         await ctx.send(f'Okay! Finished recording in `#{ctx.channel.name}`. Working on my summary.')
         # send to chatgpt api here! 
-        collected_content = channel_content['content']
-        print('Send to ChatGPT', collected_content)
+        try: 
+            # TODO: see what went wrong here! Very close this can be very cool (will cost a little likely but I'm okay with that for just my use)
+            ai_prompt = generate_ai_prompt(channel_content['content'])
+            print('OpenAI prompt')
+            response = openai.Completion.create(
+                model="text-davinci-003",
+                prompt=ai_prompt,
+                temperature=0,
+                max_tokens=64,
+                top_p=1.0,
+                frequency_penalty=0.0,
+                presence_penalty=0.0
+            )
+            print('OpenAI response', response)
+        except Exception as e:
+            print('damn', e)
+            print(traceback.print_exc())
+            return await ctx.send("Apologies, something unforseen has gone wrong.")
         # swich flag to off, and wipe content
         bot.scribe_cache[ctx.channel.id] = {"on": False, "content": []}
-
 
     
 bot.run(TOKEN)
