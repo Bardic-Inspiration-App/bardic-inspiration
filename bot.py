@@ -14,6 +14,7 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 WAVELINK_URI = os.getenv('WAVELINK_URI')
 WAVELINK_PASSWORD = os.getenv('WAVELINK_PASSWORD')
 MAX_VOLUME = 5
+COMMAND_PREFIX = "!"
 
 class CustomPlayer(wavelink.Player):
     def __init__(self):
@@ -23,7 +24,8 @@ class CustomPlayer(wavelink.Player):
 class BardBot(commands.Bot):
     def __init__(self) -> None:
         intents = discord.Intents.all()
-        super().__init__(intents=intents, command_prefix='!')
+        super().__init__(intents=intents, command_prefix=COMMAND_PREFIX)
+        self.scribe_cache = {} # ? need to save the scribe messages
 
     async def on_ready(self) -> None:
         print(f'Logged in {self.user} | {self.user.id}')
@@ -47,9 +49,13 @@ class BardBot(commands.Bot):
         except Exception as e:
             print(f'Connection failed due to: {e}')
             pass
-# Clients
+
+
+
+# CLIENTS
 bot = BardBot()
 
+# EVENTS
 @bot.event
 async def on_command_error(ctx, error):
     # command invoke errors
@@ -57,6 +63,20 @@ async def on_command_error(ctx, error):
         if hasattr(error.original, 'reason') and error.original.reason == 'PREMIUM_REQUIRED':
             await ctx.send('You do not have a premium Spotify account configured to run this command.\nRun: `!configure spotify`.')
 
+@bot.event
+async def on_message(message) -> None:
+    # scribe command logic
+    print('scribe mapping', bot.scribe_cache)
+    scribe_channel = bot.scribe_cache.get(message.channel.id)
+    is_command = message.content.split()[0].startswith(COMMAND_PREFIX)
+    if scribe_channel and scribe_channel.get('on') and not message.author.bot and not is_command:
+        # TODO: verify this is viable for a sessions worth of notes
+        scribe_channel['content'].append(message.content)
+
+    # THIS MUST RUN FOR COMMANDS TO STILL WORK
+    await bot.process_commands(message)
+
+# COMMANDS
 @bot.command(name='roll')
 async def roll(ctx, dice_string: str):
     number, sides = dice_string.split('d')
@@ -97,7 +117,7 @@ async def play(ctx: commands.Context, query: str):
 @bot.command(name='stop')
 async def stop(ctx: commands.Context):
     if not getattr(ctx.author.voice, "channel", None):
-        ctx.send('Sorry, I can only stop in voice channels!')
+        await ctx.send('Sorry, I can only stop in voice channels!')
         return
     try:
         vc: wavelink.Player = ctx.voice_client if ctx.voice_client else None
@@ -136,5 +156,27 @@ async def volume(ctx: commands.Context, command: str):
         print('damn', e)
         print(traceback.print_exc())
         return await ctx.send("Apologies, something unforseen has gone wrong.")
+
+@bot.command(name='scribe')
+async def scribe(ctx: commands.Context):
+    '''Landon add a blurb about what this does'''
+    # If this channel isn't in our scribe cache, add it with desired default; treats it like it was off from here forward
+    if not ctx.channel.id in bot.scribe_cache:
+        bot.scribe_cache[ctx.channel.id] = {"on": False, "content": []}
+    # flip `on` switch
+    bot.scribe_cache[ctx.channel.id]['on'] = not bot.scribe_cache[ctx.channel.id]['on']
+    channel_content = bot.scribe_cache.get(ctx.channel.id)
+
+    if channel_content and channel_content.get('on'):
+      await ctx.send(f'Okay! I\'m recording in {ctx.channel.name}! Run the `!scribe` command again to ask me to stop.')
+    elif channel_content:   
+        await ctx.send(f'Okay! Finished recording in {ctx.channel.name}. Working on my summary!')
+        # send to chatgpt api here! 
+        collected_content = channel_content['content']
+        print('Send to ChatGPT', collected_content)
+        # swich flag to off, and wipe content
+        bot.scribe_cache[ctx.channel.id] = {"on": False, "content": []}
+
+
     
 bot.run(TOKEN)
