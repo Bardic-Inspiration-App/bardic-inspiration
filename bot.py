@@ -66,7 +66,6 @@ async def on_command_error(ctx, error):
 @bot.event
 async def on_message(message) -> None:
     # scribe command logic
-    print('scribe mapping', bot.scribe_cache)
     scribe_channel = bot.scribe_cache.get(message.channel.id)
     is_command = message.content.split()[0].startswith(COMMAND_PREFIX)
     if scribe_channel and scribe_channel.get('on') and not message.author.bot and not is_command:
@@ -168,9 +167,9 @@ async def scribe(ctx: commands.Context):
     channel_content = bot.scribe_cache.get(ctx.channel.id)
 
     if channel_content and channel_content.get('on'):
-      await ctx.send(f'Okay! I\'m recording in {ctx.channel.name}! Run the `!scribe` command again to ask me to stop.')
+      await ctx.send(f'Okay! I\'m recording in `#{ctx.channel.name}`. Run the `!scribe` command again to ask me to stop.')
     elif channel_content:   
-        await ctx.send(f'Okay! Finished recording in {ctx.channel.name}. Working on my summary!')
+        await ctx.send(f'Okay! Finished recording in `#{ctx.channel.name}`. Working on my summary.')
         # send to chatgpt api here! 
         collected_content = channel_content['content']
         print('Send to ChatGPT', collected_content)
