@@ -49,4 +49,7 @@ def return_play_commands() -> str:
 
 
 def generate_ai_prompt(content: list[str]):
-    return "Convert these tabletop rpg notes into a readable story summary.\n\n" + ", ".join(content)
+    return "Convert these tabletop rpg notes into a readable story summary. Add minimal extra details, but only if necessary.\n\n" + ". ".join(content)
+
+def process_google_doc():
+    return

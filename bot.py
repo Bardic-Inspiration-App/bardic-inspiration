@@ -7,6 +7,7 @@ import wavelink
 from discord.ext import commands
 from dotenv import load_dotenv
 from utils.util import get_playlist_url, return_play_commands, roll_dice, shuffle_list, generate_ai_prompt
+from service import GoogleDriveService
 
 load_dotenv()
 
@@ -28,6 +29,7 @@ class BardBot(commands.Bot):
         intents = discord.Intents.all()
         super().__init__(intents=intents, command_prefix=COMMAND_PREFIX)
         self.scribe_cache = {} # ? need to save the scribe messages
+        self.g_drive_service = None
 
     async def on_ready(self) -> None:
         print(f'Logged in {self.user} | {self.user.id}')
@@ -39,14 +41,17 @@ class BardBot(commands.Bot):
         print('Ready to rock!')
 
     async def setup_hook(self) -> None:
-        """Connects bot to the wavelink server"""
-        print('Starting Node connect')
+        """Connects bot to the wavelink server and auths google"""
         try:
+            print('Starting Node connect...')
             node: wavelink.Node = wavelink.Node(
                 uri=WAVELINK_URI,
                 password=WAVELINK_PASSWORD,
             )
             await wavelink.NodePool.connect(client=bot, nodes=[node])
+
+            print('Starting build for Google service auth...')
+            self.g_drive_service = GoogleDriveService().build()
 
         except Exception as e:
             print(f'Connection failed due to: {e}')
@@ -61,9 +66,14 @@ bot = BardBot()
 @bot.event
 async def on_command_error(ctx, error):
     # command invoke errors
-    if isinstance(error, commands.errors.CommandInvokeError):
-        if hasattr(error.original, 'reason') and error.original.reason == 'PREMIUM_REQUIRED':
-            await ctx.send('You do not have a premium Spotify account configured to run this command.\nRun: `!configure spotify`.')
+    match error:
+        case isinstance(error, commands.errors.CommandInvokeError):
+            if hasattr(error.original, 'reason') and error.original.reason == 'PREMIUM_REQUIRED':
+                await ctx.send('You do not have a premium Spotify account configured to run this command.\nRun: `!configure spotify`.')
+        case isinstance(error, openai.error.RateLimitError):
+            print(error)
+        case _:
+            print("An Unknown error has occurred")
 
 @bot.event
 async def on_message(message) -> None:
@@ -170,24 +180,28 @@ async def scribe(ctx: commands.Context):
     channel_content = bot.scribe_cache.get(ctx.channel.id)
 
     if channel_content and channel_content.get('on'):
-      await ctx.send(f'Okay! I\'m recording in `#{ctx.channel.name}`. Run the `!scribe` command again to ask me to stop.')
+      await ctx.send(f'Okay! I\'m recording in `#{ctx.channel.name}`. Run the `!scribe` command again to ask me to stop.\nKeep in mind that I can only do about 3000 words before I need a Short Rest.')
     elif channel_content:   
         await ctx.send(f'Okay! Finished recording in `#{ctx.channel.name}`. Working on my summary.')
-        # send to chatgpt api here! 
+        # TODO: Stretch - save a backup of ai_prompt if there's a failure so the notes are not lost
+        # TODO: turn this logic into a util 
+        ai_prompt = generate_ai_prompt(channel_content['content'])
+        # TODO: if bot.g_drive_service is not available, raise and don't call openai
         try: 
-            # TODO: see what went wrong here! Very close this can be very cool (will cost a little likely but I'm okay with that for just my use)
-            ai_prompt = generate_ai_prompt(channel_content['content'])
-            print('OpenAI prompt')
             response = openai.Completion.create(
-                model="text-davinci-003",
+                model="text-davinci-003", # latest model available for non-chat function
                 prompt=ai_prompt,
                 temperature=0,
-                max_tokens=64,
+                max_tokens=4000,
                 top_p=1.0,
                 frequency_penalty=0.0,
                 presence_penalty=0.0
             )
-            print('OpenAI response', response)
+            # TODO: save summary id somewhere to audit/pull them if something went wrong
+            summary_id = response.get('id')
+            print("Summary OpenAI ID", summary_id)
+            summary_text = response['choices'][0]['text'] if response and 'choices' in response else "I rolled a 1 on my performance..."
+            print("Summary", summary_text)
         except Exception as e:
             print('damn', e)
             print(traceback.print_exc())
@@ -195,5 +209,38 @@ async def scribe(ctx: commands.Context):
         # swich flag to off, and wipe content
         bot.scribe_cache[ctx.channel.id] = {"on": False, "content": []}
 
+
+@bot.command(name="goo")
+async def goo(ctx: commands.Context):
+    if not bot.g_drive_service:
+        raise Exception('G Drive build not available')
+    title = 'My Document'
+    body = {
+        'title': title
+    }
+    try:
+        doc = bot.g_drive_service.documents().create(body=body).execute()
+        title = doc.get('title')
+        _id = doc.get('documentId')
+        print(f'Created document with title: {title}, id: {_id}')
+
+        # Text insertion
+        text = "Some sample text. VERY HUGE CHARACTERS. CamelCaseSentence."
+        requests = [
+            {
+                'insertText': {
+                    'location': {
+                        'index': 1,
+                    },
+                    'text': text
+                }
+            }
+        ]
+        result = bot.g_drive_service.documents().batchUpdate(documentId=_id, body={'requests': requests}).execute()
+        print("RESULTS", result)
+    except Exception as e:
+        print('damn', e)
+        print(traceback.print_exc())
+        return await ctx.send("Apologies, something unforseen has gone wrong.")
     
 bot.run(TOKEN)
