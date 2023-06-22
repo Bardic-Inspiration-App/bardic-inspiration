@@ -1,15 +1,30 @@
 import os
 import traceback
+from datetime import date
 
 import discord
 import openai
 import wavelink
+
 from discord.ext import commands
 from dotenv import load_dotenv
+from pydrive2.auth import GoogleAuth
+from pydrive2.drive import GoogleDrive
+
+from g_authenticate import write_creds
 from utils.util import get_playlist_url, return_play_commands, roll_dice, shuffle_list, generate_ai_prompt
-from service import GoogleDriveService
 
 load_dotenv()
+# Google: s/o this guy https://ericmjl.github.io/blog/2023/3/8/how-to-automate-the-creation-of-google-docs-with-python/
+write_creds()
+g_settings = {
+    "client_config_backend": "service",
+    "service_config": {
+        "client_json_file_path": os.getenv("GOOGLE_CREDENTIALS_FILENAME"),
+    }
+}
+gauth = GoogleAuth(settings=g_settings)
+gauth.ServiceAuth()
 
 # Global Variables
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -18,6 +33,9 @@ WAVELINK_URI = os.getenv('WAVELINK_URI')
 WAVELINK_PASSWORD = os.getenv('WAVELINK_PASSWORD')
 MAX_VOLUME = 5
 COMMAND_PREFIX = "!"
+
+
+
 
 class CustomPlayer(wavelink.Player):
     def __init__(self):
@@ -29,7 +47,7 @@ class BardBot(commands.Bot):
         intents = discord.Intents.all()
         super().__init__(intents=intents, command_prefix=COMMAND_PREFIX)
         self.scribe_cache = {} # ? need to save the scribe messages
-        self.g_drive_service = None
+        self.g_drive = None
 
     async def on_ready(self) -> None:
         print(f'Logged in {self.user} | {self.user.id}')
@@ -50,8 +68,8 @@ class BardBot(commands.Bot):
             )
             await wavelink.NodePool.connect(client=bot, nodes=[node])
 
-            print('Starting build for Google service auth...')
-            self.g_drive_service = GoogleDriveService().build()
+            print('Setting up Google services...')
+            self.g_drive = GoogleDrive(gauth)
 
         except Exception as e:
             print(f'Connection failed due to: {e}')
@@ -186,8 +204,10 @@ async def scribe(ctx: commands.Context):
         # TODO: Stretch - save a backup of ai_prompt if there's a failure so the notes are not lost
         # TODO: turn this logic into a util 
         ai_prompt = generate_ai_prompt(channel_content['content'])
-        # TODO: if bot.g_drive_service is not available, raise and don't call openai
+        if not bot.g_drive:
+            raise Exception('Google Drive not available! I cannot run `!scribe` right now I\m so sorry...')
         try: 
+            print('Generating AI summary...')
             response = openai.Completion.create(
                 model="text-davinci-003", # latest model available for non-chat function
                 prompt=ai_prompt,
@@ -201,7 +221,18 @@ async def scribe(ctx: commands.Context):
             summary_id = response.get('id')
             print("Summary OpenAI ID", summary_id)
             summary_text = response['choices'][0]['text'] if response and 'choices' in response else "I rolled a 1 on my performance..."
-            print("Summary", summary_text)
+            doc = bot.g_drive.CreateFile({
+                # TODO: Think of a clever title name based on the guild or something or just Session: Date
+                "title": f"Session Notes {summary_id}: {date.today()}",
+                "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            })
+            doc.SetContentString(summary_text)
+            doc.Upload()
+            # Most permissive, see if you can/should make it read only
+            doc.InsertPermission({"type": "anyone", "role": "writer", "value": "anyone"})
+
+            await ctx.send(f"Finished my summary! `*bows*`\n{doc['alternateLink']}")
+    
         except Exception as e:
             print('damn', e)
             print(traceback.print_exc())
@@ -210,37 +241,4 @@ async def scribe(ctx: commands.Context):
         bot.scribe_cache[ctx.channel.id] = {"on": False, "content": []}
 
 
-@bot.command(name="goo")
-async def goo(ctx: commands.Context):
-    if not bot.g_drive_service:
-        raise Exception('G Drive build not available')
-    title = 'My Document'
-    body = {
-        'title': title
-    }
-    try:
-        doc = bot.g_drive_service.documents().create(body=body).execute()
-        title = doc.get('title')
-        _id = doc.get('documentId')
-        print(f'Created document with title: {title}, id: {_id}')
-
-        # Text insertion
-        text = "Some sample text. VERY HUGE CHARACTERS. CamelCaseSentence."
-        requests = [
-            {
-                'insertText': {
-                    'location': {
-                        'index': 1,
-                    },
-                    'text': text
-                }
-            }
-        ]
-        result = bot.g_drive_service.documents().batchUpdate(documentId=_id, body={'requests': requests}).execute()
-        print("RESULTS", result)
-    except Exception as e:
-        print('damn', e)
-        print(traceback.print_exc())
-        return await ctx.send("Apologies, something unforseen has gone wrong.")
-    
 bot.run(TOKEN)
