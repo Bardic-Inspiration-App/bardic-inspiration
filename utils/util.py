@@ -1,4 +1,5 @@
 import random
+import spacy
 
 def shuffle_list(items: list) -> list:
     n = len(items)
@@ -48,8 +49,24 @@ def return_play_commands() -> str:
     return " ".join([f"\n- `{command}`" for command in playlists])
 
 
-def generate_ai_prompt(content: list[str]):
+def generate_ai_prompt(content: list[str]) -> str:
     return "Convert these tabletop rpg notes into a readable story summary. Add minimal extra details, but only if necessary.\n\n" + ". ".join(content)
 
-def process_google_doc():
-    return
+def text_to_chunks(text: str) -> list:
+    # https://stackoverflow.com/questions/70060847/how-to-work-with-openai-maximum-context-length-is-2049-tokens
+    chunks = [[]]
+    chunk_total_words = 0
+
+    nlp = spacy.load("en_core_web_sm")
+    sentences = nlp(text)
+
+    for sentence in sentences.sents:
+        chunk_total_words += len(sentence.text.split(" "))
+
+    if chunk_total_words > 2700:
+        chunks.append([])
+        chunk_total_words = len(sentence.text.split(" "))
+
+    chunks[len(chunks)-1].append(sentence.text)
+
+    return chunks
