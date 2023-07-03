@@ -65,6 +65,5 @@ def text_to_chunks(text: str) -> list:
     if current_chunk:
         chunks.append(current_chunk.strip())
 
-    print('type of chunks', type(chunks))
 
     return chunks
