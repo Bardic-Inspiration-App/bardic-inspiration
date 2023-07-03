@@ -1,19 +1,41 @@
 import os
 import traceback
+from datetime import date
 
 import discord
+import openai
 import wavelink
+
 from discord.ext import commands
 from dotenv import load_dotenv
-from utils.util import get_playlist_url, return_play_commands, roll_dice, shuffle_list
+from pydrive2.auth import GoogleAuth
+from pydrive2.drive import GoogleDrive
+
+from g_authenticate import write_creds
+from utils.util import get_playlist_url, return_play_commands, roll_dice, shuffle_list, generate_ai_prompt, text_to_chunks
 
 load_dotenv()
+# Google: s/o this guy https://ericmjl.github.io/blog/2023/3/8/how-to-automate-the-creation-of-google-docs-with-python/
+write_creds()
+g_settings = {
+    "client_config_backend": "service",
+    "service_config": {
+        "client_json_file_path": os.getenv("GOOGLE_CREDENTIALS_FILENAME"),
+    }
+}
+gauth = GoogleAuth(settings=g_settings)
+gauth.ServiceAuth()
 
 # Global Variables
+openai.api_key = os.getenv("OPENAI_API_KEY")
 TOKEN = os.getenv('DISCORD_TOKEN')
 WAVELINK_URI = os.getenv('WAVELINK_URI')
 WAVELINK_PASSWORD = os.getenv('WAVELINK_PASSWORD')
 MAX_VOLUME = 5
+COMMAND_PREFIX = "!"
+
+
+
 
 class CustomPlayer(wavelink.Player):
     def __init__(self):
@@ -23,7 +45,9 @@ class CustomPlayer(wavelink.Player):
 class BardBot(commands.Bot):
     def __init__(self) -> None:
         intents = discord.Intents.all()
-        super().__init__(intents=intents, command_prefix='!')
+        super().__init__(intents=intents, command_prefix=COMMAND_PREFIX)
+        self.scribe_cache = {} # ? need to save the scribe messages
+        self.g_drive = None
 
     async def on_ready(self) -> None:
         print(f'Logged in {self.user} | {self.user.id}')
@@ -35,28 +59,53 @@ class BardBot(commands.Bot):
         print('Ready to rock!')
 
     async def setup_hook(self) -> None:
-        """Connects bot to the wavelink server"""
-        print('Starting Node connect')
+        """Connects bot to the wavelink server and auths google"""
         try:
+            print('Starting Node connect...')
             node: wavelink.Node = wavelink.Node(
                 uri=WAVELINK_URI,
                 password=WAVELINK_PASSWORD,
             )
             await wavelink.NodePool.connect(client=bot, nodes=[node])
 
+            print('Setting up Google services...')
+            self.g_drive = GoogleDrive(gauth)
+
         except Exception as e:
             print(f'Connection failed due to: {e}')
             pass
-# Clients
+
+
+
+# CLIENTS
 bot = BardBot()
 
+# EVENTS
 @bot.event
 async def on_command_error(ctx, error):
     # command invoke errors
-    if isinstance(error, commands.errors.CommandInvokeError):
-        if hasattr(error.original, 'reason') and error.original.reason == 'PREMIUM_REQUIRED':
-            await ctx.send('You do not have a premium Spotify account configured to run this command.\nRun: `!configure spotify`.')
+    match error:
+        case isinstance(error, commands.errors.CommandInvokeError):
+            if hasattr(error.original, 'reason') and error.original.reason == 'PREMIUM_REQUIRED':
+                await ctx.send('You do not have a premium Spotify account configured to run this command.\nRun: `!configure spotify`.')
+        case isinstance(error, openai.error.RateLimitError):
+            print(error)
+        case _:
+            print("An Unknown error has occurred")
 
+@bot.event
+async def on_message(message) -> None:
+    # scribe command logic
+    scribe_channel = bot.scribe_cache.get(message.channel.id)
+    is_command = message.content.split()[0].startswith(COMMAND_PREFIX)
+    if scribe_channel and scribe_channel.get('on') and not message.author.bot and not is_command:
+        # TODO: verify this is viable for a sessions worth of notes
+        scribe_channel['content'].append(message.content)
+
+    # THIS MUST RUN FOR COMMANDS TO STILL WORK
+    await bot.process_commands(message)
+
+# COMMANDS
 @bot.command(name='roll')
 async def roll(ctx, dice_string: str):
     number, sides = dice_string.split('d')
@@ -97,7 +146,7 @@ async def play(ctx: commands.Context, query: str):
 @bot.command(name='stop')
 async def stop(ctx: commands.Context):
     if not getattr(ctx.author.voice, "channel", None):
-        ctx.send('Sorry, I can only stop in voice channels!')
+        await ctx.send('Sorry, I can only stop in voice channels!')
         return
     try:
         vc: wavelink.Player = ctx.voice_client if ctx.voice_client else None
@@ -136,5 +185,68 @@ async def volume(ctx: commands.Context, command: str):
         print('damn', e)
         print(traceback.print_exc())
         return await ctx.send("Apologies, something unforseen has gone wrong.")
+
+@bot.command(name='scribe')
+async def scribe(ctx: commands.Context):
+    '''
+    When ran toggles a flag to collect messages  in the context of the channel it was called in.\n 
+    When run a second time:
+    * Joins collected messages together in a string
+    * Sends the string to OpenAI to get a summary
+    * Creates a google dock and sends the link to the channel the command was run in
+    '''
+    # TODO: for now, only have it scribe in text channels, speech to text is in beta for openai -> later iteration
+    # If this channel isn't in our scribe cache, add it with desired default; treats it like it was off from here forward
+    if not ctx.channel.id in bot.scribe_cache:
+        bot.scribe_cache[ctx.channel.id] = {"on": False, "content": []}
+    # flip `on` switch
+    bot.scribe_cache[ctx.channel.id]['on'] = not bot.scribe_cache[ctx.channel.id]['on']
+    channel_content = bot.scribe_cache.get(ctx.channel.id)
+
+    if channel_content and channel_content.get('on'):
+      await ctx.send(f'Okay! I\'m recording in `#{ctx.channel.name}`. Run the `!scribe` command again to ask me to Long Rest.')
+    elif channel_content:   
+        await ctx.send(f'Okay! Finished recording in `#{ctx.channel.name}`. Working on my summary.')
+        if not bot.g_drive:
+            bot.scribe_cache[ctx.channel.id]['on'] = False
+            raise Exception('Google Drive not available! I cannot run `!scribe` right now I\m so sorry...')
+        try: 
+            print('Generating AI summary...')
+            # TODO: Stretch - save a backup of summary if there's a failure so the notes are not lost
+            # break down the summary into chunks of text so we can stay within openai token limit
+            summary_chunks = text_to_chunks(" ".join(channel_content['content']))
+            summary_text = " ".join([_summarize_text(chunk) for chunk in summary_chunks])
+            doc = bot.g_drive.CreateFile({
+                # TODO: Think of a clever title name based on the guild or something or just Session: Date
+                "title": f"Session Notes: {date.today()}",
+                "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            })
+            doc.SetContentString(summary_text)
+            doc.Upload()
+            # Most permissive, see if you can/should make it read only
+            doc.InsertPermission({"type": "anyone", "role": "writer", "value": "anyone"})
+
+            await ctx.send(f"Finished my summary!\n`*bows*`\n{doc['alternateLink']}")
     
+        except Exception as e:
+            print('damn', e)
+            print(traceback.print_exc())
+            return await ctx.send("Apologies, something unforseen has gone wrong.")
+        # swich flag to off, and wipe content
+        bot.scribe_cache[ctx.channel.id] = {"on": False, "content": []}
+
+def _summarize_text(text: str) -> str:
+    prompt = generate_ai_prompt(text)
+    response = openai.Completion.create(
+        model="text-davinci-003", # latest model available for non-chat function (as of this PR)
+        prompt=prompt,
+        temperature=0,
+        max_tokens=1000,
+        top_p=1.0,
+        frequency_penalty=0.0,
+        presence_penalty=0.0
+    )
+    return response["choices"][0].text.strip()
+
+
 bot.run(TOKEN)

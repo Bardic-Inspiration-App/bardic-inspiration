@@ -1,4 +1,5 @@
 import random
+import spacy
 
 def shuffle_list(items: list) -> list:
     n = len(items)
@@ -46,3 +47,23 @@ def get_playlist_url(query: str) -> str:
 def return_play_commands() -> str:
     playlists = ['combat', 'tense', 'explore', 'seas', 'city', 'tavern', 'infernal', 'forest', 'jungle']
     return " ".join([f"\n- `{command}`" for command in playlists])
+
+
+def generate_ai_prompt(content: list[str]) -> str:
+    return "Convert these tabletop rpg notes into a readable story summary. Add minimal extra details, but only if necessary.\n\n" + ". ".join(content)
+
+def text_to_chunks(text: str) -> list:
+    max_chunk_size = 2048
+    chunks = []
+    current_chunk = ""
+    for sentence in text.split("."):
+        if len(current_chunk) + len(sentence) < max_chunk_size:
+            current_chunk += sentence + "."
+        else:
+            chunks.append(current_chunk.strip())
+            current_chunk = sentence + "."
+    if current_chunk:
+        chunks.append(current_chunk.strip())
+
+
+    return chunks
