@@ -192,7 +192,7 @@ async def scribe(ctx: commands.Context):
     When ran toggles a flag to collect messages  in the context of the channel it was called in.\n 
     When run a second time:
     * Joins collected messages together in a string
-    * Sends the striiing to OpenAI to get a summary
+    * Sends the string to OpenAI to get a summary
     * Creates a google dock and sends the link to the channel the command was run in
     '''
     # TODO: for now, only have it scribe in text channels, speech to text is in beta for openai -> later iteration
@@ -207,14 +207,15 @@ async def scribe(ctx: commands.Context):
       await ctx.send(f'Okay! I\'m recording in `#{ctx.channel.name}`. Run the `!scribe` command again to ask me to Long Rest.')
     elif channel_content:   
         await ctx.send(f'Okay! Finished recording in `#{ctx.channel.name}`. Working on my summary.')
-        # TODO: Stretch - save a backup of ai_prompt if there's a failure so the notes are not lost
         if not bot.g_drive:
             bot.scribe_cache[ctx.channel.id]['on'] = False
             raise Exception('Google Drive not available! I cannot run `!scribe` right now I\m so sorry...')
         try: 
             print('Generating AI summary...')
+            # TODO: Stretch - save a backup of summary if there's a failure so the notes are not lost
+            # break down the summary into chunks of text so we can stay within openai token limit
             summary_chunks = text_to_chunks(" ".join(channel_content['content']))
-            summary_text = " ".join([_summarize_text(" ".join(chunk)) for chunk in summary_chunks])
+            summary_text = " ".join([_summarize_text(chunk) for chunk in summary_chunks])
             doc = bot.g_drive.CreateFile({
                 # TODO: Think of a clever title name based on the guild or something or just Session: Date
                 "title": f"Session Notes: {date.today()}",
@@ -237,7 +238,7 @@ async def scribe(ctx: commands.Context):
 def _summarize_text(text: str) -> str:
     prompt = generate_ai_prompt(text)
     response = openai.Completion.create(
-        model="text-davinci-003", # latest model available for non-chat function
+        model="text-davinci-003", # latest model available for non-chat function (as of this PR)
         prompt=prompt,
         temperature=0,
         max_tokens=1000,
@@ -245,7 +246,7 @@ def _summarize_text(text: str) -> str:
         frequency_penalty=0.0,
         presence_penalty=0.0
     )
-    return response["choices"][0]["text"]
+    return response["choices"][0].text.strip()
 
 
 bot.run(TOKEN)
