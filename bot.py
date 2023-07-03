@@ -226,7 +226,7 @@ async def scribe(ctx: commands.Context):
             # Most permissive, see if you can/should make it read only
             doc.InsertPermission({"type": "anyone", "role": "writer", "value": "anyone"})
 
-            await ctx.send(f"Finished my summary! `*bows*`\n{doc['alternateLink']}")
+            await ctx.send(f"Finished my summary!\n`*bows*`\n{doc['alternateLink']}")
     
         except Exception as e:
             print('damn', e)
