@@ -1,5 +1,5 @@
 # bardic-inspiration
-Discord Application to help a DM/GM play music during sessions on the platform
+Discord Application to help a DM/GM enhance their sessions.
 
 ## Built with:
 * Python 3.10+
