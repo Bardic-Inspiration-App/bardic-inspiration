@@ -1,5 +1,8 @@
 import random
-import spacy
+import spotipy
+
+
+VALID_PLAYLIST_COMMANDS = ['combat', 'tense', 'explore', 'seas', 'city', 'tavern', 'infernal', 'forest', 'jungle']
 
 def shuffle_list(items: list) -> list:
     n = len(items)
@@ -21,32 +24,19 @@ def roll_dice(number: int, sides: int) -> str:
         for _ in range(number)
     ])
 
-def get_playlist_url(query: str) -> str:
-    match query:
-        case 'combat':
-            return 'https://www.youtube.com/playlist?list=PLMK9kbhhnbp0At0z5aiNmjyBoL9Vvj_G1'
-        case 'tense':
-            return 'https://www.youtube.com/playlist?list=PLMK9kbhhnbp2VI5evDa_Lpqff5hwL7vg5'
-        case 'explore':
-            return 'https://www.youtube.com/playlist?list=PLMK9kbhhnbp10P0s0EkmWzFenouJe-04b'
-        case 'seas':
-            return 'https://www.youtube.com/playlist?list=PLMK9kbhhnbp2uW9l7DFC6dZNNvw9OGzG2'
-        case 'city':
-            return 'https://www.youtube.com/playlist?list=PLMK9kbhhnbp0DX8_Ki3O-8xKNycAL0tRC'
-        case 'tavern':
-            return 'https://www.youtube.com/playlist?list=PLMK9kbhhnbp21M7xsacZmVxptF_Wv0s3y'
-        case 'infernal':
-            return 'https://www.youtube.com/playlist?list=PLMK9kbhhnbp2WDTlRv5oADdO_dP9DSJPD'
-        case 'forest':
-            return 'https://www.youtube.com/playlist?list=PLMK9kbhhnbp1VdBX3o5iKpk_8RZ3FWjXN'
-        case 'jungle':
-            return 'https://www.youtube.com/playlist?list=PLMK9kbhhnbp2ULvcO1F2UNAg9kkQSH-rt'
-        case _:
-            return ''
+def get_spotify_tracks(query: str, sp: spotipy.Spotify) -> list[str]:
+    if not query in VALID_PLAYLIST_COMMANDS:
+        return []
+    search = f"bardic-inspiration:{query}"
+    results = sp.search(q=search, type='playlist')
+    playlist = next((p for p in results['playlists']['items'] if p['owner']['display_name'] == 'Landon Turner'))
+    tracks = sp.playlist_tracks(playlist_id=playlist.get('id'), fields='items',additional_types=('track',))
+    track_urls = [item['track']['external_urls']['spotify'] for item in tracks['items']]
+    return track_urls
+
 
 def return_play_commands() -> str:
-    playlists = ['combat', 'tense', 'explore', 'seas', 'city', 'tavern', 'infernal', 'forest', 'jungle']
-    return " ".join([f"\n- `{command}`" for command in playlists])
+    return " ".join([f"\n- `{command}`" for command in VALID_PLAYLIST_COMMANDS])
 
 
 def generate_ai_prompt(content: list[str]) -> str:
