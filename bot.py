@@ -108,15 +108,12 @@ bot = BardBot()
 # EVENTS
 @bot.event
 async def on_command_error(ctx, error):
+    # set up logs for me to start catching stuff
+    print(error)
     # command invoke errors
-    match error:
-        case isinstance(error, commands.errors.CommandInvokeError):
-            if hasattr(error.original, 'reason') and error.original.reason == 'PREMIUM_REQUIRED':
-                await ctx.send('You do not have a premium Spotify account configured to run this command.\nRun: `!configure spotify`.')
-        case isinstance(error, openai.error.RateLimitError):
-            print(error)
-        case _:
-            print("An Unknown error has occurred")
+    if isinstance(error, openai.error.RateLimitError):
+        await ctx.send("I apologize but I have hit my limit for processing summaries.\nThe fault is mine!")
+
 
 @bot.event
 async def on_message(message) -> None:
@@ -134,6 +131,8 @@ async def on_message(message) -> None:
 @bot.command(name='roll')
 async def roll(ctx, dice_string: str):
     number, sides = dice_string.split('d')
+    if not number:
+        number = 1
     result = roll_dice(int(number), int(sides))
     await ctx.send(result)
 

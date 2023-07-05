@@ -18,6 +18,7 @@ def roll_dice(number: int, sides: int) -> str:
     - number: the amount of dice to roll
     - type: the type of die to roll
     """
+    print(number)
     number = number if number else 1
     return ', '.join([
         str(random.choice(range(1, sides + 1)))
