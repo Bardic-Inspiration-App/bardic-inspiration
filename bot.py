@@ -155,7 +155,7 @@ async def play(ctx: commands.Context, query: str):
             return
         
         # spotify search runs async so give some feedback for the lull
-        await ctx.send("`*clears throat*\nWarming up vocals.")
+        await ctx.send("`*clears throat*...`")
         vc.autoplay = True
         for url in track_urls:
             track: spotify.SpotifyTrack = await spotify.SpotifyTrack.search(url)

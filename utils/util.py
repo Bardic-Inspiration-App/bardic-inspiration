@@ -2,7 +2,7 @@ import random
 import spotipy
 
 
-VALID_PLAYLIST_COMMANDS = ['combat', 'tense', 'explore', 'seas', 'city', 'tavern', 'infernal', 'forest', 'jungle']
+VALID_PLAYLIST_COMMANDS = ['combat', 'tense', 'explore', 'seas', 'city', 'tavern', 'infernal', 'forest', 'jungle', 'defeat']
 
 def shuffle_list(items: list) -> list:
     n = len(items)
@@ -25,10 +25,13 @@ def roll_dice(number: int, sides: int) -> str:
     ])
 
 def get_spotify_tracks(query: str, sp: spotipy.Spotify) -> list[str]:
+    """ Returns a list of spotify urls for tracks in the playlist from the query string; if it's a valid query """
     if not query in VALID_PLAYLIST_COMMANDS:
         return []
+    # The spotify playlist naming convention; must exist like this on spotify
     search = f"bardic-inspiration:{query}"
     results = sp.search(q=search, type='playlist')
+    # find the playlist created for this bot; an extra layer to ensure search gets the right playlist
     playlist = next((p for p in results['playlists']['items'] if p['owner']['display_name'] == 'Landon Turner'))
     tracks = sp.playlist_tracks(playlist_id=playlist.get('id'), fields='items',additional_types=('track',))
     track_urls = [item['track']['external_urls']['spotify'] for item in tracks['items']]
