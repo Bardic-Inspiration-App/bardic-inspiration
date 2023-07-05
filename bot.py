@@ -16,7 +16,7 @@ from wavelink.ext import spotify
 
 from g_authenticate import write_creds
 from utils.util import (
-    get_spotify_tracks, 
+    get_spotify_playlist_url, 
     return_play_commands, 
     roll_dice, 
     shuffle_list, 
@@ -148,17 +148,19 @@ async def play(ctx: commands.Context, query: str):
         await vc.set_volume(3)
         # if play is run again and it is playing have it stop and reset
         await vc.stop()
-        vc.queue = wavelink.Queue()
-        track_urls = shuffle_list(get_spotify_tracks(query, sp=SP_CLIENT))
-        if not track_urls:
+        vc.queue.reset()
+
+        playlist_url = get_spotify_playlist_url(query, sp=SP_CLIENT)
+        if not playlist_url:
             await ctx.send(f'Sorry, I could not play your request of "{query}"\nI can play the following commands:{return_play_commands()}')
             return
         
         # spotify search runs async so give some feedback for the lull
         await ctx.send("`*clears throat*...`")
-        vc.autoplay = True
-        for url in track_urls:
-            track: spotify.SpotifyTrack = await spotify.SpotifyTrack.search(url)
+        shuffled_tracks = shuffle_list(
+            [track async for track in spotify.SpotifyTrack.iterator(query=playlist_url)]
+        )
+        for track in shuffled_tracks:
             if vc.queue.is_empty and not vc.is_playing():
                 await vc.play(track, populate=True) 
                 await ctx.send(f'Playing `{query}`')
