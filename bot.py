@@ -110,6 +110,7 @@ bot = BardBot()
 async def on_command_error(ctx, error):
     # set up logs for me to start catching stuff
     print(error)
+    await ctx.send(f"I screwed up, please tell the maker:\n{error}")
     # command invoke errors
     if isinstance(error, openai.error.RateLimitError):
         await ctx.send("I apologize but I have hit my limit for processing summaries.\nThe fault is mine!")
