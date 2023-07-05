@@ -4,15 +4,25 @@ from datetime import date
 
 import discord
 import openai
+import spotipy
+import spotipy.util as util
 import wavelink
 
 from discord.ext import commands
 from dotenv import load_dotenv
 from pydrive2.auth import GoogleAuth
 from pydrive2.drive import GoogleDrive
+from wavelink.ext import spotify
 
 from g_authenticate import write_creds
-from utils.util import get_playlist_url, return_play_commands, roll_dice, shuffle_list, generate_ai_prompt, text_to_chunks
+from utils.util import (
+    get_spotify_playlist_url, 
+    return_play_commands, 
+    roll_dice, 
+    shuffle_list, 
+    generate_ai_prompt, 
+    text_to_chunks
+)
 
 load_dotenv()
 # Google: s/o this guy https://ericmjl.github.io/blog/2023/3/8/how-to-automate-the-creation-of-google-docs-with-python/
@@ -29,6 +39,16 @@ gauth.ServiceAuth()
 # Global Variables
 openai.api_key = os.getenv("OPENAI_API_KEY")
 TOKEN = os.getenv('DISCORD_TOKEN')
+SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
+SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
+SPOTIPY_TOKEN = util.prompt_for_user_token(
+    username=os.getenv('SPOTIFY_USERNAME'), 
+    scope='user-library-read playlist-read-private user-modify-playback-state', 
+    client_id=SPOTIFY_CLIENT_ID, 
+    client_secret=SPOTIFY_CLIENT_SECRET, 
+    redirect_uri=os.getenv('SPOTIFY_REDIRECT_URI')
+    )
+SP_CLIENT = spotipy.Spotify(auth=SPOTIPY_TOKEN)
 WAVELINK_URI = os.getenv('WAVELINK_URI')
 WAVELINK_PASSWORD = os.getenv('WAVELINK_PASSWORD')
 MAX_VOLUME = 5
@@ -61,12 +81,17 @@ class BardBot(commands.Bot):
     async def setup_hook(self) -> None:
         """Connects bot to the wavelink server and auths google"""
         try:
+            print('Setting up Spotify...')
+            sc = spotify.SpotifyClient(
+                client_id=SPOTIFY_CLIENT_ID, 
+                client_secret=SPOTIFY_CLIENT_SECRET, 
+            )
             print('Starting Node connect...')
             node: wavelink.Node = wavelink.Node(
                 uri=WAVELINK_URI,
                 password=WAVELINK_PASSWORD,
             )
-            await wavelink.NodePool.connect(client=bot, nodes=[node])
+            await wavelink.NodePool.connect(client=bot, nodes=[node], spotify=sc)
 
             print('Setting up Google services...')
             self.g_drive = GoogleDrive(gauth)
@@ -115,7 +140,7 @@ async def roll(ctx, dice_string: str):
 @bot.command(name='play')
 async def play(ctx: commands.Context, query: str):
     if not getattr(ctx.author.voice, "channel", None):
-        ctx.send('Sorry, I can only play in voice channels!')
+        await ctx.send('Sorry, I can only play in voice channels!')
     # TODO: Use custom player to have separate queues youtube.com/watch?v=mRzv6Zcowz0 for reference <- must be done before published (Beta)
     try:
         vc: wavelink.Player = ctx.voice_client if ctx.voice_client else await ctx.author.voice.channel.connect(cls=wavelink.Player)
@@ -123,14 +148,18 @@ async def play(ctx: commands.Context, query: str):
         await vc.set_volume(3)
         # if play is run again and it is playing have it stop and reset
         await vc.stop()
-        vc.queue = wavelink.Queue()
-        url = get_playlist_url(query)
-        if not url:
+        vc.queue.reset()
+
+        playlist_url = get_spotify_playlist_url(query, sp=SP_CLIENT)
+        if not playlist_url:
             await ctx.send(f'Sorry, I could not play your request of "{query}"\nI can play the following commands:{return_play_commands()}')
             return
-        playlist = await wavelink.YouTubePlaylist.search(url)
-        shuffled_tracks = shuffle_list(playlist.tracks.copy())
-        vc.autoplay = True
+        
+        # spotify search runs async so give some feedback for the lull
+        await ctx.send("`*clears throat*...`")
+        shuffled_tracks = shuffle_list(
+            [track async for track in spotify.SpotifyTrack.iterator(query=playlist_url)]
+        )
         for track in shuffled_tracks:
             if vc.queue.is_empty and not vc.is_playing():
                 await vc.play(track, populate=True) 
