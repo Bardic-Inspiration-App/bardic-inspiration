@@ -28,6 +28,9 @@ from utils.util import (
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+DEVELOPMENT_MODE = os.getenv("DEVELOPMENT_MODE", False)
+logger.warning(f"DEVELOPMENT MODE IS FLAGGED AS: {DEVELOPMENT_MODE}")
+
 # Load stuffs
 load_dotenv()
 logger.info("Writing GDrive credentials...")
@@ -42,19 +45,24 @@ g_settings = {
 gauth = GoogleAuth(settings=g_settings)
 gauth.ServiceAuth()
 
-# Global Variables
-openai.api_key = os.getenv("OPENAI_API_KEY")
-TOKEN = os.getenv('DISCORD_TOKEN')
+# Spotify
+logger.info("Authenticating Spotipy...")
 SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
 SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
+# Our server can't redirect so this script has to take the cached token from `.cache` if not being run locally
+## if something happens to the prod token, just run the bot locally again and take it from the new `.cache`
 SPOTIPY_TOKEN = util.prompt_for_user_token(
     username=os.getenv('SPOTIFY_USERNAME'), 
     scope='user-library-read playlist-read-private user-modify-playback-state', 
     client_id=SPOTIFY_CLIENT_ID, 
     client_secret=SPOTIFY_CLIENT_SECRET, 
     redirect_uri=os.getenv('SPOTIFY_REDIRECT_URI')
-    )
+    ) if DEVELOPMENT_MODE else os.getenv('SPOTIPY_CACHED')
 SP_CLIENT = spotipy.Spotify(auth=SPOTIPY_TOKEN)
+
+# Global Variables
+openai.api_key = os.getenv("OPENAI_API_KEY")
+TOKEN = os.getenv('DISCORD_TOKEN')
 WAVELINK_URI = os.getenv('WAVELINK_URI')
 WAVELINK_PASSWORD = os.getenv('WAVELINK_PASSWORD')
 MAX_VOLUME = 5
@@ -79,9 +87,9 @@ class BardBot(commands.Bot):
         logger.info(f'Logged in {self.user} | {self.user.id}')
         logger.info('They are traveling in the following realms:')
         for guild in bot.guilds:
-            guild = f'{guild}(id: {guild.id})'
+            guild_info = f'{guild}(id: {guild.id})'
             members = '\n - '.join([member.name for member in guild.members])
-            logger.info(f'{guild}\nGuild Members:\n - {members}')
+            logger.info(f'{guild_info}\nGuild Members:\n - {members}')
         logger.info('Ready to rock!')
 
     async def setup_hook(self) -> None:
