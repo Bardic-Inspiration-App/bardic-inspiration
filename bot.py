@@ -57,9 +57,8 @@ SPOTIPY_TOKEN = util.prompt_for_user_token(
     client_id=SPOTIFY_CLIENT_ID, 
     client_secret=SPOTIFY_CLIENT_SECRET, 
     redirect_uri=os.getenv('SPOTIFY_REDIRECT_URI')
-    )
-SPOTIPY_CACHED = os.getenv('SPOTIPY_CACHED')
-SP_CLIENT = spotipy.Spotify(auth=SPOTIPY_TOKEN) if DEVELOPMENT_MODE else spotipy.Spotify(auth=SPOTIPY_CACHED)
+    ) if DEVELOPMENT_MODE else os.getenv('SPOTIPY_CACHED')
+SP_CLIENT = spotipy.Spotify(auth=SPOTIPY_TOKEN)  
 
 # Global Variables
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -81,7 +80,7 @@ class BardBot(commands.Bot):
     def __init__(self) -> None:
         intents = discord.Intents.all()
         super().__init__(intents=intents, command_prefix=COMMAND_PREFIX)
-        self.scribe_cache = {} # ? need to save the scribe messages
+        self.scribe_cache = {} 
         self.g_drive = None
 
     async def on_ready(self) -> None:
