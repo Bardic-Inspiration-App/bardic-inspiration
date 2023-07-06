@@ -1,3 +1,4 @@
+import logging
 import os
 import traceback
 from datetime import date
@@ -24,7 +25,12 @@ from utils.util import (
     text_to_chunks
 )
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+# Load stuffs
 load_dotenv()
+logger.info("Writing GDrive credentials...")
 # Google: s/o this guy https://ericmjl.github.io/blog/2023/3/8/how-to-automate-the-creation-of-google-docs-with-python/
 write_creds()
 g_settings = {
@@ -70,34 +76,34 @@ class BardBot(commands.Bot):
         self.g_drive = None
 
     async def on_ready(self) -> None:
-        print(f'Logged in {self.user} | {self.user.id}')
-        print('They are traveling in the following realms:')
+        logger.info(f'Logged in {self.user} | {self.user.id}')
+        logger.info('They are traveling in the following realms:')
         for guild in bot.guilds:
-            print(f'{guild}(id: {guild.id})')
+            guild = f'{guild}(id: {guild.id})'
             members = '\n - '.join([member.name for member in guild.members])
-            print(f'Guild Members:\n - {members}')
-        print('Ready to rock!')
+            logger.info(f'{guild}\nGuild Members:\n - {members}')
+        logger.info('Ready to rock!')
 
     async def setup_hook(self) -> None:
         """Connects bot to the wavelink server and auths google"""
         try:
-            print('Setting up Spotify...')
+            logger.info('Setting up Spotify...')
             sc = spotify.SpotifyClient(
                 client_id=SPOTIFY_CLIENT_ID, 
                 client_secret=SPOTIFY_CLIENT_SECRET, 
             )
-            print('Starting Node connect...')
+            logger.info('Starting Node connect...')
             node: wavelink.Node = wavelink.Node(
                 uri=WAVELINK_URI,
                 password=WAVELINK_PASSWORD,
             )
             await wavelink.NodePool.connect(client=bot, nodes=[node], spotify=sc)
 
-            print('Setting up Google services...')
+            logger.info('Setting up Google services...')
             self.g_drive = GoogleDrive(gauth)
 
         except Exception as e:
-            print(f'Connection failed due to: {e}')
+            logger.error(f'Connection failed due to: {e}')
             pass
 
 
@@ -109,7 +115,7 @@ bot = BardBot()
 @bot.event
 async def on_command_error(ctx, error):
     # set up logs for me to start catching stuff
-    print(error)
+    logger.error(error)
     # command invoke errors
     if isinstance(error, openai.error.RateLimitError):
         await ctx.send("I apologize but I have hit my limit for processing summaries.\nThe fault is mine!")
@@ -167,8 +173,8 @@ async def play(ctx: commands.Context, query: str):
                 await vc.queue.put_wait(track)
 
     except Exception as e:
-        print('damn', e)
-        print(traceback.print_exc())
+        logger.error('damn', e)
+        logger.error(traceback.print_exc())
         return await ctx.send("Apologies, something unforseen has gone wrong.")
 
 @bot.command(name='stop')
@@ -183,8 +189,8 @@ async def stop(ctx: commands.Context):
             vc.queue = wavelink.Queue()
             await vc.disconnect()
     except Exception as e:
-        print('damn', e)
-        print(traceback.print_exc())
+        logger.error('damn', e)
+        logger.error(traceback.print_exc())
         return await ctx.send("Apologies, something unforseen has gone wrong.")
 
 @bot.command(name='volume')
@@ -210,8 +216,8 @@ async def volume(ctx: commands.Context, command: str):
                 await ctx.send(f"I couldn\'t adjust the volume with command: `{command}`. Try these:\n- `up`\n- `down`\n- `max`\n- `mute` ")
         
     except Exception as e:
-        print('damn', e)
-        print(traceback.print_exc())
+        logger.error('damn', e)
+        logger.error(traceback.print_exc())
         return await ctx.send("Apologies, something unforseen has gone wrong.")
 
 @bot.command(name='scribe')
@@ -239,7 +245,7 @@ async def scribe(ctx: commands.Context):
             bot.scribe_cache[ctx.channel.id]['on'] = False
             raise Exception('Google Drive not available! I cannot run `!scribe` right now I\m so sorry...')
         try: 
-            print('Generating AI summary...')
+            logger.info('Generating AI summary...')
             # TODO: Stretch - save a backup of summary if there's a failure so the notes are not lost
             # break down the summary into chunks of text so we can stay within openai token limit
             summary_chunks = text_to_chunks(" ".join(channel_content['content']))
@@ -257,8 +263,8 @@ async def scribe(ctx: commands.Context):
             await ctx.send(f"Finished my summary!\n`*bows*`\n{doc['alternateLink']}")
     
         except Exception as e:
-            print('damn', e)
-            print(traceback.print_exc())
+            logger.error('damn', e)
+            logger.error(traceback.print_exc())
             return await ctx.send("Apologies, something unforseen has gone wrong.")
         # swich flag to off, and wipe content
         bot.scribe_cache[ctx.channel.id] = {"on": False, "content": []}
