@@ -58,7 +58,7 @@ SPOTIPY_TOKEN = util.prompt_for_user_token(
     client_id=SPOTIFY_CLIENT_ID, 
     client_secret=SPOTIFY_CLIENT_SECRET, 
     redirect_uri=os.getenv('SPOTIFY_REDIRECT_URI')
-    )
+    ) if DEVELOPMENT_MODE else os.getenv("SPOTIFY_TOKEN")
 SP_CLIENT = spotipy.Spotify(auth=SPOTIPY_TOKEN)  
 
 # Global Variables
