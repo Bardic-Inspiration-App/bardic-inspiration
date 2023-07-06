@@ -57,8 +57,9 @@ SPOTIPY_TOKEN = util.prompt_for_user_token(
     client_id=SPOTIFY_CLIENT_ID, 
     client_secret=SPOTIFY_CLIENT_SECRET, 
     redirect_uri=os.getenv('SPOTIFY_REDIRECT_URI')
-    ) if DEVELOPMENT_MODE else os.getenv('SPOTIPY_CACHED')
-SP_CLIENT = spotipy.Spotify(auth=SPOTIPY_TOKEN)
+    )
+SPOTIPY_CACHED = os.getenv('SPOTIPY_CACHED')
+SP_CLIENT = spotipy.Spotify(auth=SPOTIPY_TOKEN) if DEVELOPMENT_MODE else spotipy.Spotify(auth_manager=SPOTIPY_CACHED)
 
 # Global Variables
 openai.api_key = os.getenv("OPENAI_API_KEY")
