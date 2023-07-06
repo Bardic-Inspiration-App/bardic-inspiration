@@ -15,7 +15,7 @@ from pydrive2.auth import GoogleAuth
 from pydrive2.drive import GoogleDrive
 from wavelink.ext import spotify
 
-from g_authenticate import write_creds
+from authenticate import write_creds, write_spotify_cache
 from utils.util import (
     get_spotify_playlist_url, 
     return_play_commands, 
@@ -47,17 +47,18 @@ gauth.ServiceAuth()
 
 # Spotify
 logger.info("Authenticating Spotipy...")
+if not DEVELOPMENT_MODE:
+    # server to server can't redirect so write the cache file for auth with current env vars
+    write_spotify_cache()
 SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
 SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
-# Our server can't redirect so this script has to take the cached token from `.cache` if not being run locally
-## if something happens to the prod token, just run the bot locally again and take it from the new `.cache`
 SPOTIPY_TOKEN = util.prompt_for_user_token(
     username=os.getenv('SPOTIFY_USERNAME'), 
     scope='user-library-read playlist-read-private user-modify-playback-state', 
     client_id=SPOTIFY_CLIENT_ID, 
     client_secret=SPOTIFY_CLIENT_SECRET, 
     redirect_uri=os.getenv('SPOTIFY_REDIRECT_URI')
-    ) if DEVELOPMENT_MODE else os.getenv('SPOTIPY_CACHED')
+    )
 SP_CLIENT = spotipy.Spotify(auth=SPOTIPY_TOKEN)  
 
 # Global Variables

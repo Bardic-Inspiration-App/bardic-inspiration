@@ -20,3 +20,8 @@ def write_creds():
     }
     with open(os.getenv("GOOGLE_CREDENTIALS_FILENAME"), "w+") as f:
         f.write(json.dumps(credentials))
+
+def write_spotify_cache():
+    spotify_creds = os.getenv("SPOTIPY_CACHED")
+    with open(os.getenv("SPOTIPY_CACHE_FILENAME"), "w+") as f:
+        f.write(json.dumps(spotify_creds))
