@@ -1,12 +1,14 @@
 import logging
 import os
 import traceback
+import urllib.request 
 from datetime import date
 
 import discord
 import openai
 import spotipy
-import spotipy.util as util
+from spotipy.oauth2 import SpotifyOAuth
+# import spotipy.util as util
 import wavelink
 
 from discord.ext import commands
@@ -47,19 +49,15 @@ gauth.ServiceAuth()
 
 # Spotify
 logger.info("Authenticating Spotipy...")
-if not DEVELOPMENT_MODE:
-    # server to server can't redirect so write the cache file for auth with current env vars
-    write_spotify_cache()
 SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
 SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
-SPOTIPY_TOKEN = util.prompt_for_user_token(
-    username=os.getenv('SPOTIFY_USERNAME'), 
-    scope='user-library-read playlist-read-private user-modify-playback-state', 
-    client_id=SPOTIFY_CLIENT_ID, 
-    client_secret=SPOTIFY_CLIENT_SECRET, 
-    redirect_uri=os.getenv('SPOTIFY_REDIRECT_URI')
-    ) if DEVELOPMENT_MODE else os.getenv("SPOTIFY_TOKEN")
-SP_CLIENT = spotipy.Spotify(auth=SPOTIPY_TOKEN)  
+SP_CLIENT = spotipy.Spotify(auth_manager=SpotifyOAuth(
+    scope='user-library-read playlist-read-private user-modify-playback-state',
+    client_id=SPOTIFY_CLIENT_ID,
+    client_secret=SPOTIFY_CLIENT_SECRET,
+    redirect_uri=os.getenv('SPOTIFY_REDIRECT_URI'),
+    open_browser=False
+))  
 
 # Global Variables
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -128,6 +126,8 @@ async def on_command_error(ctx, error):
     # command invoke errors
     if isinstance(error, openai.error.RateLimitError):
         await ctx.send("I apologize but I have hit my limit for processing summaries.\nThe fault is mine!")
+    if isinstance(error, spotipy.exceptions.SpotifyException):
+        await ctx.send("I am sorry, I am not able to play my music at the moment.")
 
 
 @bot.event
