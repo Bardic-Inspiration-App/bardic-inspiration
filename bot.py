@@ -1,7 +1,6 @@
 import logging
 import os
 import traceback
-import urllib.request 
 from datetime import date
 
 import discord
@@ -17,7 +16,7 @@ from pydrive2.auth import GoogleAuth
 from pydrive2.drive import GoogleDrive
 from wavelink.ext import spotify
 
-from authenticate import write_creds, write_spotify_cache
+from authenticate import write_creds
 from utils.util import (
     get_spotify_playlist_url, 
     return_play_commands, 
