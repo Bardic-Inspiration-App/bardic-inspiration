@@ -29,6 +29,7 @@ class CustomSpotifyOAuth(SpotifyOAuth):
         else:
             url = self.get_authorize_url()
         state, code = SpotifyOAuth.parse_auth_response_url(url)
+        logger.info(f"STATE: {state}, CODE: {code}")
         if self.state is not None and self.state != state:
             raise SpotifyStateError(self.state, state)
         return code
