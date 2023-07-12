@@ -40,10 +40,7 @@ class CustomSpotifyOAuth(SpotifyOAuth):
         return tuple(form.get(param) for param in ["state", "code"])
 
     def _get_auth_response_interactive(self, open_browser=False):
-        if open_browser:
-            raise Exception("Custom class was intenrally misconfigured")
-        else:
-            url = self.get_authorize_url()
+        url = self.get_authorize_url()
         state, code = self.parse_auth_response_url(url)
         logger.info(f"STATE: {state}, CODE: {code}")
         if self.state is not None and self.state != state:
