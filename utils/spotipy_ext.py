@@ -1,5 +1,8 @@
+import logging 
 from spotipy.oauth2 import SpotifyOAuth, SpotifyStateError
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 class CustomSpotifyOAuth(SpotifyOAuth):
     """ 
@@ -12,6 +15,7 @@ class CustomSpotifyOAuth(SpotifyOAuth):
             raise Exception("Custom class was intenrally misconfigured")
         else:
             url = self.get_authorize_url()
+        logger.info(f"!!!!!!!!!!!!! 'authorized url' {url}")
         state, code = SpotifyOAuth.parse_auth_response_url(url)
         if self.state is not None and self.state != state:
             raise SpotifyStateError(self.state, state)

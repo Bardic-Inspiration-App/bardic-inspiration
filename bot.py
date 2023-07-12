@@ -6,7 +6,6 @@ from datetime import date
 import discord
 import openai
 import spotipy
-from spotipy.oauth2 import SpotifyOAuth
 import wavelink
 
 from discord.ext import commands
