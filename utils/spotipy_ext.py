@@ -52,7 +52,6 @@ class CustomSpotifyOAuth(SpotifyOAuth):
         try:
             driver = webdriver.Chrome(service=chrome_service, options=chrome_options)
             driver.get(auth_url)
-
-            driver.quit()
         except Exception as e:
             logger.error(f"Failed to auth: {auth_url}. {e}" )
+            driver.quit()
