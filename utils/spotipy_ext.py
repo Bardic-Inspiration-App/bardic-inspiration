@@ -34,7 +34,7 @@ class CustomSpotifyOAuth(SpotifyOAuth):
     def _open_auth_url(self):
         auth_url = self.get_authorize_url()
         try:
-            driver = webdriver.Chrome(options=chrome_options)
+            driver = webdriver.Chrome(webdriver_path, options=chrome_options)
             driver.get(auth_url)
 
             driver.quit()
