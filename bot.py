@@ -7,7 +7,6 @@ import discord
 import openai
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
-# import spotipy.util as util
 import wavelink
 
 from discord.ext import commands
@@ -17,6 +16,7 @@ from pydrive2.drive import GoogleDrive
 from wavelink.ext import spotify
 
 from authenticate import write_creds
+from utils.spotipy_ext import CustomSpotifyOAuth
 from utils.util import (
     get_spotify_playlist_url, 
     return_play_commands, 
@@ -47,15 +47,16 @@ gauth = GoogleAuth(settings=g_settings)
 gauth.ServiceAuth()
 
 # Spotify
+# TODO: to get this to work I'm gonna have to create a custom SpotifyOAuth that skips the `_get_user_input` parts... hopefully
 logger.info("Authenticating Spotipy...")
 SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
 SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
-SP_CLIENT = spotipy.Spotify(auth_manager=SpotifyOAuth(
+SP_CLIENT = spotipy.Spotify(auth_manager=CustomSpotifyOAuth(
     scope='user-library-read playlist-read-private user-modify-playback-state',
     client_id=SPOTIFY_CLIENT_ID,
     client_secret=SPOTIFY_CLIENT_SECRET,
     redirect_uri=os.getenv('SPOTIFY_REDIRECT_URI'),
-    open_browser=False
+    open_browser=False # server only, skip opening browser
 ))  
 
 # Global Variables
@@ -187,6 +188,11 @@ async def play(ctx: commands.Context, query: str):
 
 @bot.command(name='stop')
 async def stop(ctx: commands.Context):
+    goodbye_sayings = [
+        "Time to sheathe the lute and stow the enchanted flute. May your future battles be filled with critical hits!",
+        "As the Bard takes a final bow, may your next adventure be filled with treasure, triumph, and legendary loot!",
+        "The mystical music comes to an end, but the dungeon of life awaits your next roll. Keep slayin' and playin'!",
+    ]
     if not getattr(ctx.author.voice, "channel", None):
         await ctx.send('Sorry, I can only stop in voice channels!')
         return
@@ -195,6 +201,7 @@ async def stop(ctx: commands.Context):
         if vc:
             await vc.stop()
             vc.queue = wavelink.Queue()
+            await ctx.send(shuffle_list(goodbye_sayings)[0])
             await vc.disconnect()
     except Exception as e:
         logger.error('damn', e)
