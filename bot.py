@@ -17,7 +17,6 @@ from spotipy.oauth2 import SpotifyClientCredentials
 
 
 from authenticate import write_creds
-from utils.spotipy_ext import CustomSpotifyOAuth
 from utils.util import (
     get_spotify_playlist_url, 
     return_play_commands, 
@@ -157,14 +156,15 @@ async def play(ctx: commands.Context, query: str):
         vc: wavelink.Player = ctx.voice_client if ctx.voice_client else await ctx.author.voice.channel.connect(cls=wavelink.Player)
         # set a standard that plays at a background level. default volume is aggressive
         await vc.set_volume(3)
-        # if play is run again and it is playing have it stop and reset
-        await vc.stop()
-        vc.queue.reset()
+
 
         playlist_url = get_spotify_playlist_url(query)
         if not playlist_url:
             await ctx.send(f'Sorry, I could not play your request of "{query}"\nI can play the following commands:{return_play_commands()}')
             return
+        # if play is run again and it is playing have it stop and reset
+        await vc.stop()
+        vc.queue.reset()
         
         await ctx.send("`*clears throat*...`")
         shuffled_tracks = shuffle_list(
