@@ -189,7 +189,7 @@ async def play(ctx: commands.Context, query: str):
 async def stop(ctx: commands.Context):
     goodbye_sayings = [
         "Time to sheathe the lute and stow the enchanted flute. May your future battles be filled with critical hits!",
-        "As the Bard takes a final bow, may your next adventure be filled with treasure, triumph, and legendary loot!",
+        "As I take my final bow, may your next adventure be filled with treasure, triumph, and legendary loot!",
         "The mystical music comes to an end, but the dungeon of life awaits your next roll. Keep slayin' and playin'!",
     ]
     if not getattr(ctx.author.voice, "channel", None):
