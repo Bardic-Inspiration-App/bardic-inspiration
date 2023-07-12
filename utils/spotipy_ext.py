@@ -29,7 +29,10 @@ class CustomSpotifyOAuth(SpotifyOAuth):
         query_s = urlparse(url).query
         logging.info(f'QUERY_S: {query_s}')
         form = dict(parse_qsl(query_s))
+        # {'client_id': 'accurate', 'response_type': 'code', 'redirect_uri': "'http://localhost:8888/callback'", 'scope': 'user-library-read playlist-read-private user-modify-playback-state'}
         logging.info(f'FORM: {form}')
+        logging.info(f'FORM GET: {[form.get(param) for param in ["state", "code"]]}')
+        logging.info(f'TUPLE: {tuple(form.get(param) for param in ["state", "code"])}')
         if "error" in form:
             raise SpotifyOauthError("Received error from auth server: "
                                     "{}".format(form["error"]),
