@@ -3,6 +3,7 @@ import os
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 
 from spotipy.oauth2 import SpotifyOAuth, SpotifyStateError
 
@@ -13,6 +14,7 @@ logger = logging.getLogger(__name__)
 chrome_options = Options()
 chrome_options.add_argument('--headless')  # Run Chrome in headless mode
 webdriver_path = '/app/.chromedriver/bin/chromedriver' if os.getenv('DEVELOPMENT_MODE', False) else '/path/to/chromedriver' #fixme
+chrome_service = Service(executable_path=webdriver_path)
 
 
 class CustomSpotifyOAuth(SpotifyOAuth):
@@ -34,7 +36,7 @@ class CustomSpotifyOAuth(SpotifyOAuth):
     def _open_auth_url(self):
         auth_url = self.get_authorize_url()
         try:
-            driver = webdriver.Chrome(webdriver_path, options=chrome_options)
+            driver = webdriver.Chrome(service=chrome_service, options=chrome_options)
             driver.get(auth_url)
 
             driver.quit()
