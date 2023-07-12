@@ -1,11 +1,12 @@
 import logging 
 import os
+from six.moves.urllib_parse import parse_qsl, urlparse
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 
-from spotipy.oauth2 import SpotifyOAuth, SpotifyStateError
+from spotipy.oauth2 import SpotifyOAuth, SpotifyStateError, SpotifyOauthError
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -22,6 +23,18 @@ class CustomSpotifyOAuth(SpotifyOAuth):
     Custom wrapper to allow the bot to authenticate itself.
     User Landon Turner has given permission with use of Bardic Inspiration
     """
+    @staticmethod
+    def parse_auth_response_url(url):
+        logging.info(f'AUTH URL: {url}')
+        query_s = urlparse(url).query
+        logging.info(f'QUERY_S: {query_s}')
+        form = dict(parse_qsl(query_s))
+        logging.info(f'FORM: {form}')
+        if "error" in form:
+            raise SpotifyOauthError("Received error from auth server: "
+                                    "{}".format(form["error"]),
+                                    error=form["error"])
+        return tuple(form.get(param) for param in ["state", "code"])
 
     def _get_auth_response_interactive(self, open_browser=False):
         if open_browser:
