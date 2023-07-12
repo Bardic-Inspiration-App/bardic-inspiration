@@ -13,6 +13,8 @@ from dotenv import load_dotenv
 from pydrive2.auth import GoogleAuth
 from pydrive2.drive import GoogleDrive
 from wavelink.ext import spotify
+from spotipy.oauth2 import SpotifyClientCredentials
+
 
 from authenticate import write_creds
 from utils.spotipy_ext import CustomSpotifyOAuth
@@ -45,17 +47,13 @@ g_settings = {
 gauth = GoogleAuth(settings=g_settings)
 gauth.ServiceAuth()
 
-# Spotify
-# TODO: to get this to work I'm gonna have to create a custom SpotifyOAuth that skips the `_get_user_input` parts... hopefully
+
 logger.info("Authenticating Spotipy...")
 SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
 SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
-SP_CLIENT = spotipy.Spotify(auth_manager=CustomSpotifyOAuth(
-    scope='user-library-read playlist-read-private user-modify-playback-state',
+SP_CLIENT = spotipy.Spotify(auth_manager=SpotifyClientCredentials(
     client_id=SPOTIFY_CLIENT_ID,
     client_secret=SPOTIFY_CLIENT_SECRET,
-    redirect_uri=os.getenv('SPOTIFY_REDIRECT_URI'),
-    # open_browser=False # using selenium
 ))  
 
 # Global Variables
@@ -163,12 +161,11 @@ async def play(ctx: commands.Context, query: str):
         await vc.stop()
         vc.queue.reset()
 
-        playlist_url = get_spotify_playlist_url(query, sp=SP_CLIENT)
+        playlist_url = get_spotify_playlist_url(query)
         if not playlist_url:
             await ctx.send(f'Sorry, I could not play your request of "{query}"\nI can play the following commands:{return_play_commands()}')
             return
         
-        # spotify search runs async so give some feedback for the lull
         await ctx.send("`*clears throat*...`")
         shuffled_tracks = shuffle_list(
             [track async for track in spotify.SpotifyTrack.iterator(query=playlist_url)]
