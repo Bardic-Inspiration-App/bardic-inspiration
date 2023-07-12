@@ -55,7 +55,7 @@ SP_CLIENT = spotipy.Spotify(auth_manager=CustomSpotifyOAuth(
     client_id=SPOTIFY_CLIENT_ID,
     client_secret=SPOTIFY_CLIENT_SECRET,
     redirect_uri=os.getenv('SPOTIFY_REDIRECT_URI'),
-    # open_browser=False # server only, skip opening browser # selenium works?
+    open_browser=False # using selenium
 ))  
 
 # Global Variables

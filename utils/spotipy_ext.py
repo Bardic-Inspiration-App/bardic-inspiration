@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 # Server Browser
 chrome_options = Options()
 chrome_options.add_argument('--headless')  # Run Chrome in headless mode
-webdriver_path = '/app/.chromedriver/bin/chromedriver' if os.getenv('DEVELOPMENT_MODE', False) else '/path/to/chromedriver' #fixme
+webdriver_path = '/app/.apt/usr/bin/google-chrome instead.' if os.getenv('DEVELOPMENT_MODE', False) else '/usr/local/chromedriver/' #fixme
 chrome_service = Service(executable_path=webdriver_path)
 
 
@@ -23,15 +23,15 @@ class CustomSpotifyOAuth(SpotifyOAuth):
     User Landon Turner has given permission with use of Bardic Inspiration
     """
 
-    # def _get_auth_response_interactive(self, open_browser=False):
-    #     if open_browser:
-    #         raise Exception("Custom class was intenrally misconfigured")
-    #     else:
-    #         url = self.get_authorize_url()
-    #     state, code = SpotifyOAuth.parse_auth_response_url(url)
-    #     if self.state is not None and self.state != state:
-    #         raise SpotifyStateError(self.state, state)
-    #     return code
+    def _get_auth_response_interactive(self, open_browser=False):
+        if open_browser:
+            raise Exception("Custom class was intenrally misconfigured")
+        else:
+            url = self.get_authorize_url()
+        state, code = SpotifyOAuth.parse_auth_response_url(url)
+        if self.state is not None and self.state != state:
+            raise SpotifyStateError(self.state, state)
+        return code
     
     def _open_auth_url(self):
         auth_url = self.get_authorize_url()
