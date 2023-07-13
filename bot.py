@@ -150,10 +150,13 @@ async def roll(ctx, dice_string: str):
 @bot.command(name='play')
 async def play(ctx: commands.Context, query: str):
     if not getattr(ctx.author.voice, "channel", None):
-        await ctx.send('Sorry, I can only play in voice channels!')
-    # TODO: Use custom player to have separate queues youtube.com/watch?v=mRzv6Zcowz0 for reference <- must be done before published (Beta)
+        await ctx.send('Sorry, I can only play in voice channels that you are in!')
+    
+    if ctx.voice_client and ctx.voice_client.is_connected:
+        await ctx.send('OOF! Sorry, friend. I can only play in one voice channel per server.')
+        return
     try:
-        vc: wavelink.Player = ctx.voice_client if ctx.voice_client else await ctx.author.voice.channel.connect(cls=wavelink.Player)
+        vc: CustomPlayer = ctx.voice_client if ctx.voice_client else await ctx.author.voice.channel.connect(cls=CustomPlayer())
         # autoplay goes through the list without human interaction, must be on
         vc.autoplay = True
         playlist_url = get_spotify_playlist_url(query)
@@ -169,7 +172,6 @@ async def play(ctx: commands.Context, query: str):
         shuffled_tracks = shuffle_list(
             [track async for track in spotify.SpotifyTrack.iterator(query=playlist_url)]
         )
-        
         # set a standard that plays at a background level. default volume is AGGRESSIVE
         await vc.set_volume(3)
 
