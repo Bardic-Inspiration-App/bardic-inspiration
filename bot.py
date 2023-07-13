@@ -154,10 +154,8 @@ async def play(ctx: commands.Context, query: str):
     # TODO: Use custom player to have separate queues youtube.com/watch?v=mRzv6Zcowz0 for reference <- must be done before published (Beta)
     try:
         vc: wavelink.Player = ctx.voice_client if ctx.voice_client else await ctx.author.voice.channel.connect(cls=wavelink.Player)
-        # set a standard that plays at a background level. default volume is aggressive
-        await vc.set_volume(3)
-
-
+        # autoplay goes through the list without human interaction, must be on
+        vc.autoplay = True
         playlist_url = get_spotify_playlist_url(query)
         if not playlist_url:
             await ctx.send(f'Sorry, I could not play your request of "{query}"\nI can play the following commands:{return_play_commands()}')
@@ -166,15 +164,22 @@ async def play(ctx: commands.Context, query: str):
         await vc.stop()
         vc.queue.reset()
         
+        # send feedback to the channel while we gather the tracks async
         await ctx.send("`*clears throat*...`")
         shuffled_tracks = shuffle_list(
             [track async for track in spotify.SpotifyTrack.iterator(query=playlist_url)]
         )
+        
+        # set a standard that plays at a background level. default volume is AGGRESSIVE
+        await vc.set_volume(3)
+
         for track in shuffled_tracks:
             if vc.queue.is_empty and not vc.is_playing():
+                print(f"first: {track.name}")
                 await vc.play(track, populate=True) 
                 await ctx.send(f'Playing `{query}`')
             else:
+                print(f'adding to queue: {track.name}')
                 await vc.queue.put_wait(track)
 
     except Exception as e:
