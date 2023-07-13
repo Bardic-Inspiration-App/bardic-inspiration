@@ -168,9 +168,6 @@ async def play(ctx: commands.Context, query: str):
         shuffled_tracks = shuffle_list(
             [track async for track in spotify.SpotifyTrack.iterator(query=playlist_url)]
         )
-        print(
-
-        )
         # set a standard that plays at a background level. default volume is AGGRESSIVE
         await vc.set_volume(3)
 
