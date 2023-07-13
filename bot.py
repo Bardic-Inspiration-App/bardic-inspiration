@@ -175,11 +175,9 @@ async def play(ctx: commands.Context, query: str):
 
         for track in shuffled_tracks:
             if vc.queue.is_empty and not vc.is_playing():
-                print(f"first: {track.name}")
                 await vc.play(track, populate=True) 
                 await ctx.send(f'Playing `{query}`')
             else:
-                print(f'adding to queue: {track.name}')
                 await vc.queue.put_wait(track)
 
     except Exception as e:
