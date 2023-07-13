@@ -151,6 +151,10 @@ async def roll(ctx, dice_string: str):
 async def play(ctx: commands.Context, query: str):
     if not getattr(ctx.author.voice, "channel", None):
         await ctx.send('Sorry, I can only play in voice channels that you are in!')
+    
+    if ctx.voice_client and ctx.voice_client.is_connected:
+        await ctx.send('OOF! Sorry, friend. I can only play in one voice channel per server.')
+        return
     try:
         vc: CustomPlayer = ctx.voice_client if ctx.voice_client else await ctx.author.voice.channel.connect(cls=CustomPlayer())
         # autoplay goes through the list without human interaction, must be on
