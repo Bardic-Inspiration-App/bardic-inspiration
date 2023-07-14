@@ -67,6 +67,11 @@ COMMAND_PREFIX = "!"
 
 
 class CustomPlayer(wavelink.Player):
+    """
+    Extends Player so that each instance can have a separate queue. 
+    Allows for multiple servers to play music independently. 
+    This should be used for any voice client connection code.
+    """
     def __init__(self):
         super().__init__()
         self.queue = wavelink.Queue()
@@ -275,7 +280,7 @@ async def scribe(ctx: commands.Context):
             doc.Upload()
             # Most permissive, see if you can/should make it read only
             doc.InsertPermission({"type": "anyone", "role": "writer", "value": "anyone"})
-
+            logger.info('AI summary completed.')
             await ctx.send(f"Finished my summary!\n`*bows*`\n{doc['alternateLink']}")
     
         except Exception as e:
