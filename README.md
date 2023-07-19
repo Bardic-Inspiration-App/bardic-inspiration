@@ -7,9 +7,6 @@ Discord Application to help a DM/GM enhance their sessions.
 * discord.py
 * Wavelink.py
 
-## Logging
-- https://papertrailapp.com/dashboard
-
 ## Development Setup
 - Python 3.10 is required to run this bot, install it locally
 - Create `credentials.json` file in root. Copy/Paste provided creds
