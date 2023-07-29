@@ -157,20 +157,20 @@ async def play(ctx: commands.Context, query: str):
     if not getattr(ctx.author.voice, "channel", None):
         await ctx.send('Sorry, I can only play in voice channels that you are in!')
     
-    if ctx.voice_client and ctx.voice_client.is_connected:
-        await ctx.send('OOF! Sorry, friend. I can only play in one voice channel per server.')
+    if ctx.voice_client and ctx.voice_client.channel.id != ctx.channel.id and ctx.voice_client.is_connected:
+        await ctx.send(f'OOF! Sorry friend, I am already playing in `{ctx.voice_client.channel.name}`.')
         return
     try:
         vc: CustomPlayer = ctx.voice_client if ctx.voice_client else await ctx.author.voice.channel.connect(cls=CustomPlayer())
         # autoplay goes through the list without human interaction, must be on
-        vc.autoplay = True
         playlist_url = get_spotify_playlist_url(query)
         if not playlist_url:
             await ctx.send(f'Sorry, I could not play your request of "{query}"\nI can play the following commands:{return_play_commands()}')
             return
-        # if play is run again and it is playing have it stop and reset
+        # if play is run again and it is playing have it stop and rese
         await vc.stop()
         vc.queue.reset()
+        
         
         # send feedback to the channel while we gather the tracks async
         await ctx.send("`*clears throat*...`")
@@ -178,14 +178,17 @@ async def play(ctx: commands.Context, query: str):
             [track async for track in spotify.SpotifyTrack.iterator(query=playlist_url)]
         )
         # set a standard that plays at a background level. default volume is AGGRESSIVE
-        await vc.set_volume(3)
+        await vc.set_volume(3) 
+        vc.autoplay = True
 
         for track in shuffled_tracks:
             if vc.queue.is_empty and not vc.is_playing():
-                await vc.play(track, populate=True) 
+                # DON'T set populate=True, it creates the autoqueue that throws off subsequent play commands
+                await vc.play(track) 
                 await ctx.send(f'Playing `{query}`')
             else:
                 await vc.queue.put_wait(track)
+        
 
     except Exception as e:
         logger.error('damn', e)
