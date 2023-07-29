@@ -17,6 +17,7 @@ from spotipy.oauth2 import SpotifyClientCredentials
 
 
 from authenticate import write_creds
+from utils.constants import REPEAT_PLAYLISTS
 from utils.util import (
     get_spotify_playlist_url, 
     return_play_commands, 
@@ -167,7 +168,9 @@ async def play(ctx: commands.Context, query: str):
         if not playlist_url:
             await ctx.send(f'Sorry, I could not play your request of "{query}"\nI can play the following commands:{return_play_commands()}')
             return
-        # if play is run again and it is playing have it stop and rese
+        # if play is run again and it is playing have it stop and reset
+        # this includes setting autoplay to false so we don't have the autoqueue leak in random songs
+        vc.autoplay = False
         await vc.stop()
         vc.queue.reset()
         
@@ -188,7 +191,9 @@ async def play(ctx: commands.Context, query: str):
                 await ctx.send(f'Playing `{query}`')
             else:
                 await vc.queue.put_wait(track)
-        
+        if query in REPEAT_PLAYLISTS:
+            for _ in range(10):
+                await vc.queue.put_wait(shuffled_tracks[0])
 
     except Exception as e:
         logger.error('damn', e)
@@ -232,12 +237,16 @@ async def volume(ctx: commands.Context, command: str):
             case 'down':
                 if current_volume > 0:
                     await vc.set_volume(current_volume - 1)
+            case 'min':
+                await vc.set_volume(1)
             case 'max':
                 await vc.set_volume(MAX_VOLUME)
             case 'mute':
                 await vc.set_volume(0)
             case _:
-                await ctx.send(f"I couldn\'t adjust the volume with command: `{command}`. Try these:\n- `up`\n- `down`\n- `max`\n- `mute` ")
+                await ctx.send(f"I couldn\'t adjust the volume with command: `{command}`. Try these:\n- `up`\n- `down`\n- `min`\n- `max`\n- `mute` ")
+                return
+        await ctx.send(f"Volume adjusted to `{command}`.")
         
     except Exception as e:
         logger.error('damn', e)
