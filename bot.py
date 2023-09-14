@@ -173,6 +173,7 @@ async def play(ctx: commands.Context, query: str):
         vc.autoplay = False
         await vc.stop()
         vc.queue.reset()
+        vc.auto_queue.reset()
         
         
         # send feedback to the channel while we gather the tracks async
@@ -186,6 +187,8 @@ async def play(ctx: commands.Context, query: str):
 
         for track in shuffled_tracks:
             if vc.queue.is_empty and not vc.is_playing():
+                print(track.name)
+                print(vc.auto_queue)
                 # DON'T set populate=True, it creates the autoqueue that throws off subsequent play commands
                 await vc.play(track) 
                 await ctx.send(f'Playing `{query}`')
@@ -194,6 +197,8 @@ async def play(ctx: commands.Context, query: str):
         if query in REPEAT_PLAYLISTS:
             for _ in range(10):
                 await vc.queue.put_wait(shuffled_tracks[0])
+        
+        vc.auto_queue.reset()
 
     except Exception as e:
         logger.error('damn', e)
