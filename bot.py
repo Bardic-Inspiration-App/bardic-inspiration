@@ -19,7 +19,7 @@ from spotipy.oauth2 import SpotifyClientCredentials
 from authenticate import write_creds
 from utils.constants import REPEAT_PLAYLISTS
 from utils.util import (
-    get_spotify_playlist_url, 
+    get_playlist_url, 
     return_play_commands, 
     roll_dice, 
     shuffle_list, 
@@ -96,17 +96,12 @@ class BardBot(commands.Bot):
     async def setup_hook(self) -> None:
         """Connects bot to the wavelink server and auths google"""
         try:
-            logger.info('Setting up Spotify...')
-            sc = spotify.SpotifyClient(
-                client_id=SPOTIFY_CLIENT_ID, 
-                client_secret=SPOTIFY_CLIENT_SECRET, 
-            )
             logger.info('Starting Node connect...')
             node: wavelink.Node = wavelink.Node(
                 uri=WAVELINK_URI,
                 password=WAVELINK_PASSWORD,
             )
-            await wavelink.NodePool.connect(client=bot, nodes=[node], spotify=sc)
+            await wavelink.NodePool.connect(client=bot, nodes=[node])
 
             logger.info('Setting up Google services...')
             self.g_drive = GoogleDrive(gauth)
@@ -164,36 +159,35 @@ async def play(ctx: commands.Context, query: str):
     try:
         vc: CustomPlayer = ctx.voice_client if ctx.voice_client else await ctx.author.voice.channel.connect(cls=CustomPlayer())
         # autoplay goes through the list without human interaction, must be on
-        playlist_url = get_spotify_playlist_url(query)
+        playlist_url = get_playlist_url(query)
         if not playlist_url:
             await ctx.send(f'Sorry, I could not play your request of "{query}"\nI can play the following commands:{return_play_commands()}')
             return
         # if play is run again and it is playing have it stop and reset
-        # this includes setting autoplay to false so we don't have the autoqueue leak in random songs
-        vc.autoplay = False
         await vc.stop()
         vc.queue.reset()
+
         
         
         # send feedback to the channel while we gather the tracks async
         await ctx.send("`*clears throat*...`")
-        shuffled_tracks = shuffle_list(
-            [track async for track in spotify.SpotifyTrack.iterator(query=playlist_url)]
-        )
+        playlist = await wavelink.YouTubePlaylist.search(playlist_url)
+        shuffled_tracks = shuffle_list(playlist.tracks.copy())
+        vc.autoplay = True
         # set a standard that plays at a background level. default volume is AGGRESSIVE
         await vc.set_volume(3) 
         vc.autoplay = True
 
         for track in shuffled_tracks:
             if vc.queue.is_empty and not vc.is_playing():
-                # DON'T set populate=True, it creates the autoqueue that throws off subsequent play commands
-                await vc.play(track) 
+                await vc.play(track, populate=True) 
                 await ctx.send(f'Playing `{query}`')
             else:
                 await vc.queue.put_wait(track)
         if query in REPEAT_PLAYLISTS:
             for _ in range(10):
                 await vc.queue.put_wait(shuffled_tracks[0])
+        
 
     except Exception as e:
         logger.error('damn', e)
