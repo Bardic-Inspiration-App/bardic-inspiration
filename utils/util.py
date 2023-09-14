@@ -22,7 +22,7 @@ def roll_dice(number: int, sides: int) -> str:
         for _ in range(number)
     ])
 
-def get_spotify_playlist_url(query: str) -> str:
+def get_playlist_url(query: str) -> str:
     """ Returns a spotify playlist url if it's a valid command"""
     if not query in VALID_PLAYLIST_COMMANDS:
         return ''

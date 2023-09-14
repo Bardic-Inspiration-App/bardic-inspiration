@@ -25,10 +25,10 @@ VALID_PLAYLIST_COMMANDS = {
     'infernal':'https://www.youtube.com/playlist?list=PLMK9kbhhnbp2WDTlRv5oADdO_dP9DSJPD',
     'forest':'https://www.youtube.com/playlist?list=PLMK9kbhhnbp1VdBX3o5iKpk_8RZ3FWjXN',
     'jungle':'https://www.youtube.com/playlist?list=PLMK9kbhhnbp2ULvcO1F2UNAg9kkQSH-rt',
-    'freebird:' ,
-    'bush': ,
-    'future': ,
-    'defeat': ,
+    'freebird': 'https://www.youtube.com/playlist?list=PLMK9kbhhnbp1HQT5edKqhhUWDj5ZJUCbN',
+    'bush': 'https://www.youtube.com/playlist?list=PLMK9kbhhnbp06iLFYXolDqSyaomyiXGgS',
+    'future': 'https://www.youtube.com/playlist?list=PLMK9kbhhnbp2DM_FqCsZOhMcd9e_bqfuy',
+    'defeat': 'https://www.youtube.com/playlist?list=PLMK9kbhhnbp3sQ6IEoxQLFSPz2FOtePWv',
 }
 
 
