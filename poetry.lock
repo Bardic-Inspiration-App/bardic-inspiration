@@ -519,14 +519,14 @@ files = [
 
 [[package]]
 name = "discord-py"
-version = "2.2.3"
+version = "2.3.2"
 description = "A Python wrapper for the Discord API"
 category = "main"
 optional = false
 python-versions = ">=3.8.0"
 files = [
-    {file = "discord.py-2.2.3-py3-none-any.whl", hash = "sha256:792bdcfe71cfe013c446cf379b2e83e08b5050604322ad6fb592864e63511abd"},
-    {file = "discord.py-2.2.3.tar.gz", hash = "sha256:f9df95795c6f52c5db43b7ab43634993e12ef233288636a759166dd9c134d077"},
+    {file = "discord.py-2.3.2-py3-none-any.whl", hash = "sha256:9da4679fc3cb10c64b388284700dc998663e0e57328283bbfcfc2525ec5960a6"},
+    {file = "discord.py-2.3.2.tar.gz", hash = "sha256:4560f70f2eddba7e83370ecebd237ac09fbb4980dc66507482b0c0e5b8f76b9c"},
 ]
 
 [package.dependencies]
@@ -1879,14 +1879,14 @@ colorama = {version = ">=0.4.6", markers = "sys_platform == \"win32\" and python
 
 [[package]]
 name = "wavelink"
-version = "2.3.1"
+version = "2.6.4"
 description = "A robust and powerful Lavalink wrapper for discord.py"
 category = "main"
 optional = false
 python-versions = ">=3.10"
 files = [
-    {file = "Wavelink-2.3.1-py3-none-any.whl", hash = "sha256:30230867d2b12b9bc4302a74479d0f8b00129c1a37793f1211e5d8ee95c0b702"},
-    {file = "Wavelink-2.3.1.tar.gz", hash = "sha256:b6322b88423e01ccc741afe88d77252a3ef14fb0930a79eb4be14d47d5f4daff"},
+    {file = "wavelink-2.6.4-py3-none-any.whl", hash = "sha256:49b4daece62342acb24eab0b8def243a8043860267d4d05d509e079595c85c74"},
+    {file = "wavelink-2.6.4.tar.gz", hash = "sha256:fa8d07f26f50d79bca9809db9e72faf548355ae96b5d00e543b308023e3f07a5"},
 ]
 
 [package.dependencies]

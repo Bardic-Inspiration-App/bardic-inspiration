@@ -1,4 +1,4 @@
-VALID_PLAYLIST_COMMANDS_SP = {
+VALID_PLAYLIST_COMMANDS = {
     'combat': 'https://open.spotify.com/playlist/78ltcr3ORGi6rd7sYuHrs3?si=2058e49413904d3e', 
     'tense': 'https://open.spotify.com/playlist/3LiFqKplInrSBonY0S2XHL?si=b166ddcabe7e4212', 
     'explore': 'https://open.spotify.com/playlist/7fP4RQVz1JiTXFXbF9r0Zl?si=d78370f6ae594c33', 
@@ -15,7 +15,7 @@ VALID_PLAYLIST_COMMANDS_SP = {
     }
 
 
-VALID_PLAYLIST_COMMANDS = {
+VALID_PLAYLIST_COMMANDS_YT = {
     'combat':'https://www.youtube.com/playlist?list=PLMK9kbhhnbp0At0z5aiNmjyBoL9Vvj_G1',
     'tense':'https://www.youtube.com/playlist?list=PLMK9kbhhnbp2VI5evDa_Lpqff5hwL7vg5',
     'explore':'https://www.youtube.com/playlist?list=PLMK9kbhhnbp10P0s0EkmWzFenouJe-04b',

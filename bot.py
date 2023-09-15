@@ -19,7 +19,7 @@ from spotipy.oauth2 import SpotifyClientCredentials
 from authenticate import write_creds
 from utils.constants import REPEAT_PLAYLISTS
 from utils.util import (
-    get_playlist_url, 
+    get_spotify_playlist_url, 
     return_play_commands, 
     roll_dice, 
     shuffle_list, 
@@ -96,12 +96,17 @@ class BardBot(commands.Bot):
     async def setup_hook(self) -> None:
         """Connects bot to the wavelink server and auths google"""
         try:
+            logger.info('Setting up Spotify...')
+            sc = spotify.SpotifyClient(
+                client_id=SPOTIFY_CLIENT_ID, 
+                client_secret=SPOTIFY_CLIENT_SECRET, 
+            )
             logger.info('Starting Node connect...')
             node: wavelink.Node = wavelink.Node(
                 uri=WAVELINK_URI,
                 password=WAVELINK_PASSWORD,
             )
-            await wavelink.NodePool.connect(client=bot, nodes=[node])
+            await wavelink.NodePool.connect(client=bot, nodes=[node], spotify=sc)
 
             logger.info('Setting up Google services...')
             self.g_drive = GoogleDrive(gauth)
