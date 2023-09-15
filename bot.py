@@ -170,34 +170,33 @@ async def play(ctx: commands.Context, query: str):
         vc.autoplay = False
         vc.queue.loop_all = True
 
-
         playlist_url = get_spotify_playlist_url(query)
         if not playlist_url:
             await ctx.send(f'Sorry, I could not play your request of "{query}"\nI can play the following commands:{return_play_commands()}')
             return
         # send feedback to the channel while we gather the tracks async
         await ctx.send("`*clears throat*...`")
-        shuffled_tracks = shuffle_list(
+        shuffled_tracks: list[spotify.SpotifyTrack] = shuffle_list(
             [track async for track in spotify.SpotifyTrack.iterator(query=playlist_url)]
         )
+
         if not shuffled_tracks:
             await ctx.send(f'Ah, pardon me, I can\'t seem to find my playlist for `{query}`. Quite embarrassing really... Maybe contact the creator?')
             return
         # set a standard that plays at a background level. default volume is AGGRESSIVE
         await vc.set_volume(3) 
 
-        first_track = shuffled_tracks.pop(0)
-        if vc.queue.is_empty and not vc.is_playing():
-            await vc.play(first_track)
-            await ctx.send(f'Playing `{query}`')
-
         # some playlists are just one song for a specific effect so a number to the queue
         if query in REPEAT_PLAYLISTS:
             for _ in range(10):
-                await vc.queue.put_wait(first_track)
+                await vc.queue.put_wait(shuffled_tracks[0])
         else:
             for track in shuffled_tracks:
                 await vc.queue.put_wait(track)
+
+        if not vc.is_playing():
+            await vc.play(vc.queue.get())
+            await ctx.send(f'Playing `{query}`')
 
     except Exception as e:
         logger.error('damn', e)
