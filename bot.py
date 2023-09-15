@@ -163,37 +163,41 @@ async def play(ctx: commands.Context, query: str):
         return
     try:
         vc: CustomPlayer = ctx.voice_client if ctx.voice_client else await ctx.author.voice.channel.connect(cls=CustomPlayer())
-        # autoplay goes through the list without human interaction, must be on
+        # if play is run again and it is playing have it stop and reset
+        await vc.stop()
+        vc.queue.reset()
+        # autoplay triggers the autoqueue which adds "recommended" songs (they are so random and ruin the vibe lol)
+        vc.autoplay = False
+        vc.queue.loop_all = True
+
+
         playlist_url = get_spotify_playlist_url(query)
         if not playlist_url:
             await ctx.send(f'Sorry, I could not play your request of "{query}"\nI can play the following commands:{return_play_commands()}')
             return
-        # if play is run again and it is playing have it stop and reset
-        # this includes setting autoplay to false so we don't have the autoqueue leak in random songs
-        vc.autoplay = False
-        await vc.stop()
-        vc.queue.reset()
-        
-        
         # send feedback to the channel while we gather the tracks async
         await ctx.send("`*clears throat*...`")
         shuffled_tracks = shuffle_list(
             [track async for track in spotify.SpotifyTrack.iterator(query=playlist_url)]
         )
+        if not shuffled_tracks:
+            await ctx.send(f'Ah, pardon me, I can\'t seem to find my playlist for `{query}`. Quite embarrassing really... Maybe contact the creator?')
+            return
         # set a standard that plays at a background level. default volume is AGGRESSIVE
         await vc.set_volume(3) 
-        vc.autoplay = True
 
-        for track in shuffled_tracks:
-            if vc.queue.is_empty and not vc.is_playing():
-                # DON'T set populate=True, it creates the autoqueue that throws off subsequent play commands
-                await vc.play(track) 
-                await ctx.send(f'Playing `{query}`')
-            else:
-                await vc.queue.put_wait(track)
+        first_track = shuffled_tracks.pop(0)
+        if vc.queue.is_empty and not vc.is_playing():
+            await vc.play(first_track)
+            await ctx.send(f'Playing `{query}`')
+
+        # some playlists are just one song for a specific effect so a number to the queue
         if query in REPEAT_PLAYLISTS:
             for _ in range(10):
-                await vc.queue.put_wait(shuffled_tracks[0])
+                await vc.queue.put_wait(first_track)
+        else:
+            for track in shuffled_tracks:
+                await vc.queue.put_wait(track)
 
     except Exception as e:
         logger.error('damn', e)
